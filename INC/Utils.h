@@ -2,12 +2,16 @@
 #define _UTILS_H_
 
 #include <string.h>
+#include <assert.h>
+#include <stdlib.h>
 
 #include "UserType.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+#define ERR_ALLOCMEM_FAIL		-20
 
 #define BIT8		(0x80)
 #define BIT7		(0x40)
@@ -19,10 +23,9 @@ extern "C" {
 #define BIT2		(0x02)
 #define BIT1		(0x01)
 
-
 #define CHECK_M(a)		((a)==NULL)
 
-#define CLEAR_BUFF(b)	memset((b), 0x00, sizeof((b)))
+#define CLEAR_BUFF(b)	memset(b, 0x00, sizeof(b))
 
 #define VALIDATEHEXSTRING(s) ((strlen((s))%2)==0)?1:0 //�ж��Ƿ��ǺϷ������ֽ�����ת��������ʮ������ַ�
 
@@ -56,6 +59,8 @@ int64 byteArrayToLong(byteArray data, byte len);
 
 int32 byteArrayToInt(byteArray data, byte len);
 
+int compressTrackData(unsigned char *desCMPData, unsigned short *desLen,
+		char *srcTrackData) ;
 
 #ifdef __cplusplus
 }
