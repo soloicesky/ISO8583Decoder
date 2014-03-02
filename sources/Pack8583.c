@@ -7,6 +7,12 @@ static unsigned char bitmapSize = STANDARD_BITMAP_SIZE;
 const static unsigned char bitmapBits[] = { BITMAPBIT1, BITMAPBIT2, BITMAPBIT3,
 BITMAPBIT4, BITMAPBIT5, BITMAPBIT6, BITMAPBIT7, BITMAPBIT8 };
 
+/**
+ * @description: setup bitmap field's size
+ * @param: size - bitmap field's size
+ * @retval: ERR_INVALID_BITMAPSIZE - size is out of ranges
+ * @retval: 0 - at return zero means success
+ */
 int set_bitmapSize(unsigned char size) {
 	if ((size != STANDARD_BITMAP_SIZE) || (size != EXTEND_BITMAP_SIZE)) {
 		return ERR_INVALID_BITMAPSIZE;
@@ -16,6 +22,11 @@ int set_bitmapSize(unsigned char size) {
 	return 0;
 }
 
+/**
+ * @description: get bitmap field's size
+ * @param: none
+ * @retval: bitmapSize - size of the bitmap
+ */
 int get_bitmapSize(void) {
 	return bitmapSize;
 }
@@ -50,14 +61,20 @@ static int packLength(unsigned char *desMsg, unsigned short *desMsgLen,
 		return ret;
 	}
 
+	if(fd->attr.lenAtr == FIX)
+	{
+		*desMsgLen = 0;
+		return 0;
+	}
+
 	switch (fd->attr.varlenLen) {
 	case L:
 		*desMsg = (fd->content.length / 2);
 		*desMsgLen = 1;
 		break;
 	case LL:
-		*desMsg = ((fd->content.length / 2) / 10 << 4)
-				| ((fd->content.length / 2) % 10);
+		*desMsg = ((fd->content.length) / 10 << 4)
+				| ((fd->content.length) % 10);
 		*desMsgLen = 1;
 		break;
 	case LLL:
@@ -91,9 +108,10 @@ static int packNumericField(unsigned char *desMsg, unsigned short *desMsgLen,
 
 	memset(bcdBuf, 0x00, fd->content.length / 2);
 	ret = hexStringToByteArray(bcdBuf, &len, (char *) fd->content.value);
-	*desMsgLen = len;
+//	*desMsgLen = len;
 
 	if (ret) {
+	//	printf("hexStringToByteArray ret=%d", ret);
 		return ret;
 	}
 
@@ -103,8 +121,8 @@ static int packNumericField(unsigned char *desMsg, unsigned short *desMsgLen,
 		return ret;
 	}
 
-	memcpy(desMsg + *desMsgLen, bcdBuf, (fd->content.length / 2));
-	*desMsgLen += (fd->content.length / 2);
+	memcpy(desMsg + *desMsgLen, bcdBuf, len);
+	*desMsgLen += ((fd->content.length+1) / 2);
 
 	return ret;
 }
@@ -267,46 +285,42 @@ int packISO8583Msg(unsigned char *des8583Msg, unsigned short *desMsgLen,
 	}
 
 	*desMsgLen = 0;
-	bitmap = des8583Msg + bitmapSize;
+	bitmap = des8583Msg + FS.fdSet[0].content.length / 2;
 
 	for (i = 0; i < fns->size; i++) {
 		swapLen = 0;
-
-		SETBITS(bitmap[fns->fnSet[i] / 8], bitmapBits[fns->fnSet[i] % 8]); //setup bitmap
-
-		if (i == 1) { //because bitmap is after message code so when pack field two should skip the bitmap's room
-			*desMsgLen += bitmapSize; //bitmap size may be standard 64 bits or extend 128 bits
-		}
+		printf("field:%d\r\n", fns->fnSet[i]);
+		SETBITS(bitmap[fns->fnSet[i] / 8], bitmapBits[(fns->fnSet[i] % 8) - 1]); //setup bitmap
 
 		//use the packing methods according to the field's attribute
-		switch (FS.fdSet[fns->fnSet[i]].attr.contentAtr) {
+		switch (FS.fdSet[fns->fnSet[i] - 1].attr.contentAtr) {
 		case N:
 			ret = packNumericField(des8583Msg + *desMsgLen, &swapLen,
-					&FS.fdSet[fns->fnSet[i]]);
+					&FS.fdSet[fns->fnSet[i]- 1]);
 			break;
 		case A:
 			ret = packAField(des8583Msg + *desMsgLen, &swapLen,
-					&FS.fdSet[fns->fnSet[i]]);
+					&FS.fdSet[fns->fnSet[i]- 1]);
 			break;
 		case AN:
 			ret = packANField(des8583Msg + *desMsgLen, &swapLen,
-					&FS.fdSet[fns->fnSet[i]]);
+					&FS.fdSet[fns->fnSet[i]- 1]);
 			break;
 		case ANS:
 			ret = packANSField(des8583Msg + *desMsgLen, &swapLen,
-					&FS.fdSet[fns->fnSet[i]]);
+					&FS.fdSet[fns->fnSet[i]- 1]);
 			break;
 		case Z:
 			ret = packZField(des8583Msg + *desMsgLen, &swapLen,
-					&FS.fdSet[fns->fnSet[i]]);
+					&FS.fdSet[fns->fnSet[i]- 1]);
 			break;
 		case B:
 			ret = packBField(des8583Msg + *desMsgLen, &swapLen,
-					&FS.fdSet[fns->fnSet[i]]);
+					&FS.fdSet[fns->fnSet[i]- 1]);
 			break;
 		case S:
 			ret = packSField(des8583Msg + *desMsgLen, &swapLen,
-					&FS.fdSet[fns->fnSet[i]]);
+					&FS.fdSet[fns->fnSet[i]- 1]);
 			break;
 		default:
 			return ERR_INVALID_CONTENTATTR;
@@ -314,6 +328,10 @@ int packISO8583Msg(unsigned char *des8583Msg, unsigned short *desMsgLen,
 		}
 
 		*desMsgLen += swapLen;
+		
+		if (fns->fnSet[i] == 1) { //because bitmap is after message code so when pack field two should skip the bitmap's room
+			*desMsgLen += bitmapSize; //bitmap size may be standard 64 bits or extend 128 bits
+		}
 	}
 
 	return ret;
@@ -359,7 +377,8 @@ static int unpakNumericField(unsigned char **srcMsg, unsigned short *srcMsgLen,
 
 	// if it's not allocated mem then allocated the len + 2 space,additional two is for store the '\0' end of a string
 	// and RFU one for dealing overflow
-	if (CHECK_M(FS.fdSet[fieldNo].content.value)) {
+	if (CHECK_M(FS.fdSet[fieldNo].content.value)
+			|| (FS.fdSet[fieldNo].content.length < len)) {
 		FS.fdSet[fieldNo].content.value = (char *) malloc(
 				sizeof(char) * (len + 2));
 
@@ -420,7 +439,8 @@ static int unpakAField(unsigned char **srcMsg, unsigned short *srcMsgLen,
 
 	// if it's not allocated mem then allocated the len + 2 space,additional two is for store the '\0' end of a string
 	// and RFU one for dealing overflow
-	if (CHECK_M(FS.fdSet[fieldNo].content.value)) {
+	if (CHECK_M(FS.fdSet[fieldNo].content.value)
+			|| (FS.fdSet[fieldNo].content.length < len)) {
 		FS.fdSet[fieldNo].content.value = (char *) malloc(
 				sizeof(char) * (len + 2));
 
@@ -480,7 +500,8 @@ static int unpakANField(unsigned char **srcMsg, unsigned short *srcMsgLen,
 
 	// if it's not allocated mem then allocated the len + 2 space,additional two is for store the '\0' end of a string
 	// and RFU one for dealing overflow
-	if (CHECK_M(FS.fdSet[fieldNo].content.value)) {
+	if (CHECK_M(FS.fdSet[fieldNo].content.value)
+			|| (FS.fdSet[fieldNo].content.length < len)) {
 		FS.fdSet[fieldNo].content.value = (char *) malloc(
 				sizeof(char) * (len + 2));
 
@@ -540,7 +561,8 @@ static int unpakANSField(unsigned char **srcMsg, unsigned short *srcMsgLen,
 
 	// if it's not allocated mem then allocated the len + 2 space,additional two is for store the '\0' end of a string
 	// and RFU one for dealing overflow
-	if (CHECK_M(FS.fdSet[fieldNo].content.value)) {
+	if (CHECK_M(FS.fdSet[fieldNo].content.value)
+			|| (FS.fdSet[fieldNo].content.length < len)) {
 		FS.fdSet[fieldNo].content.value = (char *) malloc(
 				sizeof(char) * (len + 2));
 
@@ -600,7 +622,9 @@ static int unpakSField(unsigned char **srcMsg, unsigned short *srcMsgLen,
 
 	// if it's not allocated mem then allocated the len + 2 space,additional two is for store the '\0' end of a string
 	// and RFU one for dealing overflow
-	if (CHECK_M(FS.fdSet[fieldNo].content.value)) {
+	if (CHECK_M(FS.fdSet[fieldNo].content.value)
+			|| (FS.fdSet[fieldNo].content.length < len)) {
+
 		FS.fdSet[fieldNo].content.value = (char *) malloc(
 				sizeof(char) * (len + 2));
 
@@ -661,7 +685,8 @@ static int unpakBField(unsigned char **srcMsg, unsigned short *srcMsgLen,
 
 	// if it's not allocated mem then allocated the len + 2 space,additional two is for store the '\0' end of a string
 	// and RFU one for dealing overflow
-	if (CHECK_M(FS.fdSet[fieldNo].content.value)) {
+	if (CHECK_M(FS.fdSet[fieldNo].content.value)
+			|| (FS.fdSet[fieldNo].content.length < len)) {
 		FS.fdSet[fieldNo].content.value = (unsigned char *) malloc(
 				sizeof(unsigned char) * len);
 
@@ -720,7 +745,8 @@ static int unpakTrackZField(unsigned char **srcMsg, unsigned short *srcMsgLen,
 
 	// if it's not allocated mem then allocated the len + 2 space,additional two is for store the '\0' end of a string
 	// and RFU one for dealing overflow
-	if (CHECK_M(FS.fdSet[fieldNo].content.value)) {
+	if (CHECK_M(FS.fdSet[fieldNo].content.value)
+			|| (FS.fdSet[fieldNo].content.length < len)) {
 		FS.fdSet[fieldNo].content.value = (char *) malloc(
 				sizeof(char) * (len + 2));
 
@@ -781,7 +807,6 @@ int unpackISO8583Msg(unsigned char *srcMsg, unsigned short srcMsgLen) {
 			break;
 		case ANS:
 			ret = unpakANSField(&backupMsg, &srcMsgLen, fns.fnSet[i]);
-			backupMsg += 2;
 			break;
 		case S:
 			ret = unpakSField(&backupMsg, &srcMsgLen, fns.fnSet[i]);

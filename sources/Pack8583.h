@@ -1,6 +1,8 @@
 #ifndef _PACK8583_H_
 #define _PACK8583_H_
 
+#include "ST8583.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif

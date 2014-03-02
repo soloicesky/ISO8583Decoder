@@ -141,6 +141,34 @@ typedef struct _fd_no_set_
 
 extern FieldSet FS;
 
+/**
+ * @description: setup a specify field's attribute and it's content
+ * @param: FIELD - fd the field
+ * @retval: ERR_INVALID_FIELDNO - the field no is out of ranges
+ * @retval: 0 - at return zero means success
+ */
+int setField(FIELD *fd);
+
+/**
+ * @description: setup a specify field's attribute by specify the field no and attribute
+ * @param: filedNo - the field's no
+ * @param: attr - the field's attribute
+ * @retval: ERR_INVALID_FIELDNO - the field no is out of ranges
+ * @retval: 0 - at return zero means success
+ */
+int setFieldAttr(unsigned char filedNo,FdAttr attr);
+
+/**
+ * @description: setup a specify field's content by specify the field no and content
+ * @param: filedNo - the field's no
+ * @param: content - the field's content
+ * @param: contentLen - the field's content's length
+ * @retval: ERR_INVALID_FIELDNO - the field no is out of ranges
+ * @retval: 0 - at return zero means success
+ */
+int setFieldContent(unsigned char filedNo,void *content, unsigned short contentLen);
+
+
 #ifdef __cplusplus
 }
 #endif

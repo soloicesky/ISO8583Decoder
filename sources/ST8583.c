@@ -153,7 +153,20 @@ int setFieldContent(unsigned char filedNo,void *content, unsigned short contentL
 		return ERR_INVALID_FIELDNO;
 	}
 
-	FS.fdSet[filedNo - 1].content.value = content;
+	if(CHECK_M(FS.fdSet[filedNo - 1].content.value) ||
+		(FS.fdSet[filedNo - 1].content.length < contentLen))
+	{
+		FS.fdSet[filedNo - 1].content.value = 
+			(unsigned char *)malloc(sizeof(unsigned char) * (contentLen + 2));
+
+		if(CHECK_M(FS.fdSet[filedNo - 1].content.value))
+		{
+			return ERR_ALOM_FAILED;
+		}
+	}
+
+	memset( FS.fdSet[filedNo - 1].content.value, 0x00, (contentLen + 2));
+	memcpy(FS.fdSet[filedNo - 1].content.value, content, contentLen);
 	FS.fdSet[filedNo - 1].content.length = contentLen;
 	return 0;
 }
