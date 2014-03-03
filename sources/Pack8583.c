@@ -1,3 +1,5 @@
+#include <errno.h>
+#include <stdio.h>
 #include "ST8583.h"
 #include "Pack8583.h"
 #include "Utils.h"
@@ -792,10 +794,12 @@ int unpackISO8583Msg(unsigned char *srcMsg, unsigned short srcMsgLen) {
 		return ERR_INVALID_MSG;
 	}
 
-	fns.fnSet = (int *) malloc(sizeof(int) * bitmapSize);
 	memset(&fns, 0x00, sizeof(fns));
+	fns.fnSet = (int *) malloc(sizeof(int) * (bitmapSize*8));
+
 
 	if (CHECK_M(fns.fnSet)) {
+//		printf("faild this[%s]\n", strerror(errno));
 		return ERR_ALOM_FAILED;
 	}
 
@@ -808,6 +812,7 @@ int unpackISO8583Msg(unsigned char *srcMsg, unsigned short srcMsgLen) {
 	}
 
 	for (i = 0; i < fns.size; i++) {
+		printf("field->%d\n", fns.fnSet[i]);
 		switch (FS.fdSet[fns.fnSet[i] - 1].attr.contentAtr) {
 		case N:
 			ret = unpakNumericField(&backupMsg, &srcMsgLen, fns.fnSet[i]);

@@ -68,8 +68,26 @@ int testBuildISO8583Msg(void)
 int testUnpackISO8583Msg(void)
 {
 	//add your to do here
+	char *testMsg="60052100006031000000000810003800010AC000140000161441490303081234567830303030303030313334343930303132333435363738313233343536373839303132333435001100000085004000606F3FB56EB7F7B2DF00657E864E9249C89CA2C689380B88B845D2DF350000000000000000A246BBB86F3FB56EB7F7B2DF00657E864E9249C89CA2C689";
+	unsigned char testBuf[512];
+	int len = 0;
+	int ret = 0;
 
+	memset(testBuf, 0x00, sizeof(testBuf));
+	ret = hexStringToByteArray(testBuf, &len, testMsg);
 
+	if(ret)
+	{
+		printf("hexStringToByteArray ret=%d\n", ret);
+	}
+
+	ret = unpackISO8583Msg(testBuf, (unsigned short)len);
+
+	if(ret)
+	{
+		printf("unpackISO8583Msg ret=%d\n", ret);
+	}
+	
 	return 0;
 }
 
@@ -78,6 +96,7 @@ int main(void)
 {
 
 	testBuildISO8583Msg();
+	testUnpackISO8583Msg();
 	return 0;
 }
 
