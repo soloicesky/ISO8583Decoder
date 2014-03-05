@@ -28,9 +28,9 @@ extern "C" {
 #define BITMAPBIT7			0X02
 #define BITMAPBIT8			0X01
 
-typedef int (*saveData)(unsigned char *fieldNo, void *content, unsigned short len);
+typedef int (*saveData)(unsigned char fieldNo, void *content, unsigned short len);
 
-int unpackISO8583Msg(unsigned char *srcMsg, unsigned short srcMsgLen);
+int unpackISO8583Msg(unsigned char *srcMsg, unsigned short srcMsgLen, saveData PsaveData);
 
 int packISO8583Msg(unsigned char *des8583Msg, unsigned short *desMsgLen,
 		FdNoSet *fns);

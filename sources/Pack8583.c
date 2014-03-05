@@ -290,7 +290,7 @@ int packISO8583Msg(unsigned char *des8583Msg, unsigned short *desMsgLen,
 
 	for (i = 0; i < fns->size; i++) {
 		swapLen = 0;
-		printf("field:%d\r\n", fns->fnSet[i]);
+	//	printf("field:%d\r\n", fns->fnSet[i]);
 		SETBITS(bitmap[fns->fnSet[i] / 8], bitmapBits[(fns->fnSet[i] % 8) - 1]); //setup bitmap
 
 		//use the packing methods according to the field's attribute
@@ -338,12 +338,10 @@ int packISO8583Msg(unsigned char *des8583Msg, unsigned short *desMsgLen,
 	return ret;
 }
 
-
-static int unpackLength(unsigned char **srcMsg, unsigned short *srcMsgLen,unsigned short *contentLen,
-		unsigned char fieldNo)
-{
-	int ret = 0;
-	unsigned short  len = 0;
+static int unpackLength(unsigned char **srcMsg, unsigned short *srcMsgLen,
+		unsigned short *contentLen, unsigned char fieldNo) {
+//	int ret = 0;
+	unsigned short len = 0;
 	unsigned char *backupMsg = *srcMsg;
 
 	//check if the message is valid
@@ -364,14 +362,14 @@ static int unpackLength(unsigned char **srcMsg, unsigned short *srcMsgLen,unsign
 			*srcMsgLen -= 1;
 			break;
 		case LL:
-			len = ((*backupMsg & 0xF0)>>4) * 10 + (*backupMsg & 0x0F);
+			len = ((*backupMsg & 0xF0) >> 4) * 10 + (*backupMsg & 0x0F);
 			backupMsg++;
 			*srcMsgLen -= 1;
 			break;
 		case LLL:
 //			printf("len1:[%02X]\n",*backupMsg);
 //			printf("len2:[%02X]\n",backupMsg[1]);
-			len = (*backupMsg & 0x0F) * 100 + ((backupMsg[1] & 0xF0)>>4) * 10
+			len = (*backupMsg & 0x0F) * 100 + ((backupMsg[1] & 0xF0) >> 4) * 10
 					+ (backupMsg[1] & 0x0F);
 			backupMsg += 2;
 			*srcMsgLen -= 2;
@@ -382,7 +380,6 @@ static int unpackLength(unsigned char **srcMsg, unsigned short *srcMsgLen,unsign
 		}
 
 		if ((len > FS.fdSet[fieldNo - 1].attr.maxLen) || (len <= 0)) {
-			printf("len->%d\n", len);
 			return (ERR_BASELEN_WRONG - fieldNo);
 		}
 	} else {
@@ -390,14 +387,15 @@ static int unpackLength(unsigned char **srcMsg, unsigned short *srcMsgLen,unsign
 	}
 
 	*contentLen = len;
-
+	*srcMsg = backupMsg;
+//	printf("len->%d, *srcMsg[%d]\n", len, *srcMsg[0]);
 	return 0;
 }
 
 static int unpakNumericField(unsigned char **srcMsg, unsigned short *srcMsgLen,
 		unsigned char fieldNo, saveData PsaveData) {
 	int ret = 0;
-	unsigned short  len = 0;
+	unsigned short len = 0;
 	unsigned char *backupMsg = *srcMsg;
 	char *tempPtr = NULL;
 
@@ -411,10 +409,9 @@ static int unpakNumericField(unsigned char **srcMsg, unsigned short *srcMsgLen,
 		return ERR_INVALID_MSG;
 	}
 
-	ret = unpackLength(&backupMsg,  srcMsgLen, &len,  fieldNo);
+	ret = unpackLength(&backupMsg, srcMsgLen, &len, fieldNo);
 
-	if(ret)
-	{
+	if (ret) {
 		return ret;
 	}
 	// if it's not allocated mem then allocated the len + 2 space,additional two is for store the '\0' end of a string
@@ -435,19 +432,21 @@ static int unpakNumericField(unsigned char **srcMsg, unsigned short *srcMsgLen,
 			backupMsg, (int) ((len + 1) / 2));
 	tempPtr = (char *) FS.fdSet[fieldNo - 1].content.value;
 	tempPtr[len] = '\0';
-	printf("value->%s\n", tempPtr);
+//	printf("value->%s\n", tempPtr);
 	FS.fdSet[fieldNo - 1].content.length = len;
 	*srcMsgLen -= (len + 1) / 2;
 	*srcMsg = backupMsg + ((len + 1) / 2);
-
-	PsaveData(fieldNo, FS.fdSet[fieldNo - 1].content.value,FS.fdSet[fieldNo - 1].content.length );
+	if (PsaveData) {
+		PsaveData(fieldNo, FS.fdSet[fieldNo - 1].content.value,
+				FS.fdSet[fieldNo - 1].content.length);
+	}
 	return ret;
 }
 
 static int unpakAField(unsigned char **srcMsg, unsigned short *srcMsgLen,
 		unsigned char fieldNo, saveData PsaveData) {
 	int ret = 0;
-	int len = 0;
+	unsigned short len = 0;
 	unsigned char *backupMsg = *srcMsg;
 	char *temPtr;
 
@@ -461,10 +460,9 @@ static int unpakAField(unsigned char **srcMsg, unsigned short *srcMsgLen,
 		return ERR_INVALID_MSG;
 	}
 
-	ret = unpackLength(&backupMsg,  srcMsgLen, &len,  fieldNo);
+	ret = unpackLength(&backupMsg, srcMsgLen, &len, fieldNo);
 
-	if(ret)
-	{
+	if (ret) {
 		return ret;
 	}
 
@@ -485,22 +483,24 @@ static int unpakAField(unsigned char **srcMsg, unsigned short *srcMsgLen,
 	memcpy(FS.fdSet[fieldNo - 1].content.value, backupMsg, len);
 	temPtr = (char *) FS.fdSet[fieldNo - 1].content.value;
 	temPtr[len] = '\0';
-	printf("value->%s\n", temPtr);
+//	printf("value->%s\n", temPtr);
 	FS.fdSet[fieldNo - 1].content.length = len;
 	*srcMsg = backupMsg + len;
 	*srcMsgLen -= len;
-	
-	PsaveData(fieldNo, FS.fdSet[fieldNo - 1].content.value,FS.fdSet[fieldNo - 1].content.length );
+	if (PsaveData) {
+		PsaveData(fieldNo, FS.fdSet[fieldNo - 1].content.value,
+				FS.fdSet[fieldNo - 1].content.length);
+	}
 	return ret;
 }
 
 static int unpakANField(unsigned char **srcMsg, unsigned short *srcMsgLen,
 		unsigned char fieldNo, saveData PsaveData) {
 	int ret = 0;
-	int len = 0;
+	unsigned short len = 0;
 	unsigned char *backupMsg = *srcMsg;
 	char *temPtr;
-	
+
 	//check if the message is valid
 	if (CHECK_M(backupMsg) || !(srcMsgLen > 0)) {
 		return ERR_INVALID_MSG;
@@ -511,10 +511,9 @@ static int unpakANField(unsigned char **srcMsg, unsigned short *srcMsgLen,
 		return ERR_INVALID_MSG;
 	}
 
-	ret = unpackLength(&backupMsg,  srcMsgLen, &len,  fieldNo)
+	ret = unpackLength(&backupMsg, srcMsgLen, &len, fieldNo);
 
-	if(ret)
-	{
+	if (ret) {
 		return ret;
 	}
 
@@ -535,19 +534,21 @@ static int unpakANField(unsigned char **srcMsg, unsigned short *srcMsgLen,
 	memcpy(FS.fdSet[fieldNo - 1].content.value, backupMsg, len);
 	temPtr = (char *) FS.fdSet[fieldNo - 1].content.value;
 	temPtr[len] = '\0';
-	printf("value->%s\n", temPtr);
+//	printf("value->%s\n", temPtr);
 	FS.fdSet[fieldNo - 1].content.length = len;
 	*srcMsg = backupMsg + len;
 	*srcMsgLen -= len;
-	
-	PsaveData(fieldNo, FS.fdSet[fieldNo - 1].content.value,FS.fdSet[fieldNo - 1].content.length );
+	if (PsaveData) {
+		PsaveData(fieldNo, FS.fdSet[fieldNo - 1].content.value,
+				FS.fdSet[fieldNo - 1].content.length);
+	}
 	return ret;
 }
 
 static int unpakANSField(unsigned char **srcMsg, unsigned short *srcMsgLen,
 		unsigned char fieldNo, saveData PsaveData) {
 	int ret = 0;
-	int len = 0;
+	unsigned short len = 0;
 	unsigned char *backupMsg = *srcMsg;
 	char *temPtr;
 
@@ -561,21 +562,10 @@ static int unpakANSField(unsigned char **srcMsg, unsigned short *srcMsgLen,
 		return ERR_INVALID_MSG;
 	}
 
-	ret = unpackLength(&backupMsg,  srcMsgLen, &len,  fieldNo);
+	ret = unpackLength(&backupMsg, srcMsgLen, &len, fieldNo);
 
-	if(ret)
-	{
+	if (ret) {
 		return ret;
-	}
-
-		printf("len=>%d\n", len);
-
-		if ((len > FS.fdSet[fieldNo - 1].attr.maxLen) || (len <= 0)) {
-			
-			return (ERR_BASELEN_WRONG - fieldNo);
-		}
-	} else {
-		len = FS.fdSet[fieldNo - 1].attr.maxLen;
 	}
 
 	// if it's not allocated mem then allocated the len + 2 space,additional two is for store the '\0' end of a string
@@ -595,19 +585,22 @@ static int unpakANSField(unsigned char **srcMsg, unsigned short *srcMsgLen,
 	memcpy(FS.fdSet[fieldNo - 1].content.value, backupMsg, len);
 	temPtr = (char *) FS.fdSet[fieldNo - 1].content.value;
 	temPtr[len] = '\0';
-	printf("value->[%s]\n", temPtr);
+//	printf("value->[%s]\n", temPtr);
 	FS.fdSet[fieldNo - 1].content.length = len;
 	*srcMsg = backupMsg + len;
 	*srcMsgLen -= len;
-	
-	PsaveData(fieldNo, FS.fdSet[fieldNo - 1].content.value,FS.fdSet[fieldNo - 1].content.length );
+
+	if (PsaveData) {
+		PsaveData(fieldNo, FS.fdSet[fieldNo - 1].content.value,
+				FS.fdSet[fieldNo - 1].content.length);
+	}
 	return ret;
 }
 
 static int unpakSField(unsigned char **srcMsg, unsigned short *srcMsgLen,
 		unsigned char fieldNo, saveData PsaveData) {
 	int ret = 0;
-	int len = 0;
+	unsigned short len = 0;
 	unsigned char *backupMsg = *srcMsg;
 	char *temPtr;
 	//check if the message is valid
@@ -620,10 +613,9 @@ static int unpakSField(unsigned char **srcMsg, unsigned short *srcMsgLen,
 		return ERR_INVALID_MSG;
 	}
 
-		ret = unpackLength(&backupMsg,  srcMsgLen, &len,  fieldNo);
+	ret = unpackLength(&backupMsg, srcMsgLen, &len, fieldNo);
 
-	if(ret)
-	{
+	if (ret) {
 		return ret;
 	}
 
@@ -645,11 +637,14 @@ static int unpakSField(unsigned char **srcMsg, unsigned short *srcMsgLen,
 	memcpy(FS.fdSet[fieldNo - 1].content.value, backupMsg, len);
 	temPtr = (char *) FS.fdSet[fieldNo - 1].content.value;
 	temPtr[len] = '\0';
-	printf("value->%s\n", temPtr);
+//	printf("value->%s\n", temPtr);
 	FS.fdSet[fieldNo - 1].content.length = len;
 	*srcMsg = backupMsg + len;
 	*srcMsgLen -= len;
-	PsaveData(fieldNo, FS.fdSet[fieldNo - 1].content.value,FS.fdSet[fieldNo - 1].content.length );
+	if (PsaveData) {
+		PsaveData(fieldNo, FS.fdSet[fieldNo - 1].content.value,
+				FS.fdSet[fieldNo - 1].content.length);
+	}
 
 	return ret;
 }
@@ -657,7 +652,7 @@ static int unpakSField(unsigned char **srcMsg, unsigned short *srcMsgLen,
 static int unpakBField(unsigned char **srcMsg, unsigned short *srcMsgLen,
 		unsigned char fieldNo, saveData PsaveData) {
 	int ret = 0;
-	int len = 0;
+	unsigned short len = 0;
 	unsigned char *backupMsg = *srcMsg;
 
 	//check if the message is valid
@@ -670,10 +665,9 @@ static int unpakBField(unsigned char **srcMsg, unsigned short *srcMsgLen,
 		return ERR_INVALID_MSG;
 	}
 
-		ret = unpackLength(&backupMsg,  srcMsgLen, &len,  fieldNo);
+	ret = unpackLength(&backupMsg, srcMsgLen, &len, fieldNo);
 
-	if(ret)
-	{
+	if (ret) {
 		return ret;
 	}
 
@@ -696,15 +690,17 @@ static int unpakBField(unsigned char **srcMsg, unsigned short *srcMsgLen,
 	FS.fdSet[fieldNo - 1].content.length = len;
 	*srcMsg = backupMsg + len;
 	*srcMsgLen -= len;
-	
-	PsaveData(fieldNo, FS.fdSet[fieldNo - 1].content.value,FS.fdSet[fieldNo - 1].content.length );
+	if (PsaveData) {
+		PsaveData(fieldNo, FS.fdSet[fieldNo - 1].content.value,
+				FS.fdSet[fieldNo - 1].content.length);
+	}
 	return ret;
 }
 
 static int unpakTrackZField(unsigned char **srcMsg, unsigned short *srcMsgLen,
 		unsigned char fieldNo, saveData PsaveData) {
 	int ret = 0;
-	int len = 0;
+	unsigned short len = 0;
 	unsigned char *backupMsg = *srcMsg;
 
 	//check if the message is valid
@@ -717,10 +713,9 @@ static int unpakTrackZField(unsigned char **srcMsg, unsigned short *srcMsgLen,
 		return ERR_INVALID_MSG;
 	}
 
-		ret = unpackLength(&backupMsg,  srcMsgLen, &len,  fieldNo);
+	ret = unpackLength(&backupMsg, srcMsgLen, &len, fieldNo);
 
-	if(ret)
-	{
+	if (ret) {
 		return ret;
 	}
 
@@ -745,16 +740,19 @@ static int unpakTrackZField(unsigned char **srcMsg, unsigned short *srcMsgLen,
 	FS.fdSet[fieldNo - 1].content.length = len;
 	*srcMsg = backupMsg + ((len + 1) / 2);
 	*srcMsgLen -= ((len + 1) / 2);
-	
-	PsaveData(fieldNo, FS.fdSet[fieldNo - 1].content.value,FS.fdSet[fieldNo - 1].content.length );
+	if (PsaveData) {
+		PsaveData(fieldNo, FS.fdSet[fieldNo - 1].content.value,
+				FS.fdSet[fieldNo - 1].content.length);
+	}
 	return ret;
 }
 
-int unpackISO8583Msg(unsigned char *srcMsg, unsigned short srcMsgLen, saveData PsaveData) {
+int unpackISO8583Msg(unsigned char *srcMsg, unsigned short srcMsgLen,
+		saveData PsaveData) {
 	int ret = 0;
 	FdNoSet fns;
-	unsigned char *bitmap = srcMsg + FS.fdSet[0].attr.maxLen/2;
-	unsigned char *backupMsg = srcMsg +FS.fdSet[0].attr.maxLen/2 +  bitmapSize;
+	unsigned char *bitmap = srcMsg + FS.fdSet[0].attr.maxLen / 2;
+	unsigned char *backupMsg = bitmap + bitmapSize;;
 	int i = 0;
 	int j = 0;
 
@@ -778,37 +776,40 @@ int unpackISO8583Msg(unsigned char *srcMsg, unsigned short srcMsgLen, saveData P
 		}
 	}
 
-	
 	for (i = 0; i < fns.size; i++) {
-		printf("field->%d\n", fns.fnSet[i]);
+	//	printf("field->%d\n", fns.fnSet[i]);
+	//	printf("fn=:%d, ctr:%d\n", FS.fdSet[fns.fnSet[i] - 1].filedNo,FS.fdSet[fns.fnSet[i] - 1].attr.contentAtr);
 		switch (FS.fdSet[fns.fnSet[i] - 1].attr.contentAtr) {
 		case N:
-			printf("N\n");
-			ret = unpakNumericField(&backupMsg, &srcMsgLen, fns.fnSet[i],  PsaveData);
+		//	printf("N\n");
+			ret = unpakNumericField(&backupMsg, &srcMsgLen, fns.fnSet[i],
+					PsaveData);
 			break;
 		case A:
-			printf("A\n");
-			ret = unpakAField(&backupMsg, &srcMsgLen, fns.fnSet[i],  PsaveData);
+		//	printf("A\n");
+			ret = unpakAField(&backupMsg, &srcMsgLen, fns.fnSet[i], PsaveData);
 			break;
 		case AN:
-			printf("AN\n");
-			ret = unpakANField(&backupMsg, &srcMsgLen, fns.fnSet[i],  PsaveData);
+		//	printf("AN\n");
+			ret = unpakANField(&backupMsg, &srcMsgLen, fns.fnSet[i], PsaveData);
 			break;
 		case ANS:
-			printf("ANS\n");
-			ret = unpakANSField(&backupMsg, &srcMsgLen, fns.fnSet[i],  PsaveData);
+		//	printf("ANS\n");
+			ret = unpakANSField(&backupMsg, &srcMsgLen, fns.fnSet[i],
+					PsaveData);
 			break;
 		case S:
-			printf("S\n");
-			ret = unpakSField(&backupMsg, &srcMsgLen, fns.fnSet[i],  PsaveData);
+		//	printf("S\n");
+			ret = unpakSField(&backupMsg, &srcMsgLen, fns.fnSet[i], PsaveData);
 			break;
 		case Z:
-			printf("Z\n");
-			ret = unpakTrackZField(&backupMsg, &srcMsgLen, fns.fnSet[i]);
+		//	printf("Z\n");
+			ret = unpakTrackZField(&backupMsg, &srcMsgLen, fns.fnSet[i],
+					PsaveData);
 			break;
 		case B:
-			printf("B\n");
-			ret = unpakBField(&backupMsg, &srcMsgLen, fns.fnSet[i],  PsaveData);
+		//	printf("B\n");
+			ret = unpakBField(&backupMsg, &srcMsgLen, fns.fnSet[i], PsaveData);
 			break;
 		default:
 			return ERR_INVALID_LENLENATTR; //the length's length's attribute is out of range only L LL LLL is valid
