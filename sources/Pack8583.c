@@ -338,12 +338,13 @@ int packISO8583Msg(unsigned char *des8583Msg, unsigned short *desMsgLen,
 	return ret;
 }
 
-static int unpakNumericField(unsigned char **srcMsg, unsigned short *srcMsgLen,
-		unsigned char fieldNo) {
+
+static int unpackLength(unsigned char **srcMsg, unsigned short *srcMsgLen,unsigned short *contentLen,
+		unsigned char fieldNo)
+{
 	int ret = 0;
-	int len = 0;
+	unsigned short  len = 0;
 	unsigned char *backupMsg = *srcMsg;
-	char *tempPtr = NULL;
 
 	//check if the message is valid
 	if (CHECK_M(backupMsg) || !(*srcMsgLen > 0)) {
@@ -370,7 +371,7 @@ static int unpakNumericField(unsigned char **srcMsg, unsigned short *srcMsgLen,
 		case LLL:
 //			printf("len1:[%02X]\n",*backupMsg);
 //			printf("len2:[%02X]\n",backupMsg[1]);
-			len = (*backupMsg & 0x0F) * 100 + (backupMsg[1] & 0xF0) * 10
+			len = (*backupMsg & 0x0F) * 100 + ((backupMsg[1] & 0xF0)>>4) * 10
 					+ (backupMsg[1] & 0x0F);
 			backupMsg += 2;
 			*srcMsgLen -= 2;
@@ -388,6 +389,34 @@ static int unpakNumericField(unsigned char **srcMsg, unsigned short *srcMsgLen,
 		len = FS.fdSet[fieldNo - 1].attr.maxLen;
 	}
 
+	*contentLen = len;
+
+	return 0;
+}
+
+static int unpakNumericField(unsigned char **srcMsg, unsigned short *srcMsgLen,
+		unsigned char fieldNo, saveData PsaveData) {
+	int ret = 0;
+	unsigned short  len = 0;
+	unsigned char *backupMsg = *srcMsg;
+	char *tempPtr = NULL;
+
+	//check if the message is valid
+	if (CHECK_M(backupMsg) || !(*srcMsgLen > 0)) {
+		return ERR_INVALID_MSG;
+	}
+
+	//check if the field no is out of rang if yes then return ERR_INVALID_MSG
+	if ((fieldNo > bitmapSize * 8) || (fieldNo < 0)) {
+		return ERR_INVALID_MSG;
+	}
+
+	ret = unpackLength(&backupMsg,  srcMsgLen, &len,  fieldNo);
+
+	if(ret)
+	{
+		return ret;
+	}
 	// if it's not allocated mem then allocated the len + 2 space,additional two is for store the '\0' end of a string
 	// and RFU one for dealing overflow
 	if (CHECK_M(FS.fdSet[fieldNo - 1].content.value)
@@ -410,11 +439,13 @@ static int unpakNumericField(unsigned char **srcMsg, unsigned short *srcMsgLen,
 	FS.fdSet[fieldNo - 1].content.length = len;
 	*srcMsgLen -= (len + 1) / 2;
 	*srcMsg = backupMsg + ((len + 1) / 2);
+
+	PsaveData(fieldNo, FS.fdSet[fieldNo - 1].content.value,FS.fdSet[fieldNo - 1].content.length );
 	return ret;
 }
 
 static int unpakAField(unsigned char **srcMsg, unsigned short *srcMsgLen,
-		unsigned char fieldNo) {
+		unsigned char fieldNo, saveData PsaveData) {
 	int ret = 0;
 	int len = 0;
 	unsigned char *backupMsg = *srcMsg;
@@ -430,26 +461,11 @@ static int unpakAField(unsigned char **srcMsg, unsigned short *srcMsgLen,
 		return ERR_INVALID_MSG;
 	}
 
-	switch (FS.fdSet[fieldNo - 1].attr.varlenLen) {
-	case L:
-		len = *backupMsg;
-		backupMsg++;
-		*srcMsgLen -= 1;
-		break;
-	case LL:
-		len = ((*backupMsg & 0xF0)>>4) * 10 + (*backupMsg & 0x0F);
-		backupMsg++;
-		*srcMsgLen -= 1;
-		break;
-	case LLL:
-		len = (*backupMsg & 0x0F) * 100 + ((backupMsg[1] & 0xF0)>>4) * 10
-				+ (backupMsg[1] & 0x0F);
-		backupMsg += 2;
-		*srcMsgLen -= 2;
-		break;
-	default:
-		return ERR_INVALID_LENLENATTR; //the length's length's attribute is out of range only L LL LLL is valid
-		break;
+	ret = unpackLength(&backupMsg,  srcMsgLen, &len,  fieldNo);
+
+	if(ret)
+	{
+		return ret;
 	}
 
 	// if it's not allocated mem then allocated the len + 2 space,additional two is for store the '\0' end of a string
@@ -473,11 +489,13 @@ static int unpakAField(unsigned char **srcMsg, unsigned short *srcMsgLen,
 	FS.fdSet[fieldNo - 1].content.length = len;
 	*srcMsg = backupMsg + len;
 	*srcMsgLen -= len;
+	
+	PsaveData(fieldNo, FS.fdSet[fieldNo - 1].content.value,FS.fdSet[fieldNo - 1].content.length );
 	return ret;
 }
 
 static int unpakANField(unsigned char **srcMsg, unsigned short *srcMsgLen,
-		unsigned char fieldNo) {
+		unsigned char fieldNo, saveData PsaveData) {
 	int ret = 0;
 	int len = 0;
 	unsigned char *backupMsg = *srcMsg;
@@ -493,26 +511,11 @@ static int unpakANField(unsigned char **srcMsg, unsigned short *srcMsgLen,
 		return ERR_INVALID_MSG;
 	}
 
-	switch (FS.fdSet[fieldNo - 1].attr.varlenLen) {
-	case L:
-		len = *backupMsg;
-		backupMsg++;
-		*srcMsgLen -= 1;
-		break;
-	case LL:
-		len = ((*backupMsg & 0xF0)>>4) * 10 + (*backupMsg & 0x0F);
-		backupMsg++;
-		*srcMsgLen -= 1;
-		break;
-	case LLL:
-		len = (*backupMsg & 0x0F) * 100 + ((backupMsg[1] & 0xF0)>>4) * 10
-				+ (backupMsg[1] & 0x0F);
-		backupMsg += 2;
-		*srcMsgLen -= 2;
-		break;
-	default:
-		return ERR_INVALID_LENLENATTR; //the length's length's attribute is out of range only L LL LLL is valid
-		break;
+	ret = unpackLength(&backupMsg,  srcMsgLen, &len,  fieldNo)
+
+	if(ret)
+	{
+		return ret;
 	}
 
 	// if it's not allocated mem then allocated the len + 2 space,additional two is for store the '\0' end of a string
@@ -536,11 +539,13 @@ static int unpakANField(unsigned char **srcMsg, unsigned short *srcMsgLen,
 	FS.fdSet[fieldNo - 1].content.length = len;
 	*srcMsg = backupMsg + len;
 	*srcMsgLen -= len;
+	
+	PsaveData(fieldNo, FS.fdSet[fieldNo - 1].content.value,FS.fdSet[fieldNo - 1].content.length );
 	return ret;
 }
 
 static int unpakANSField(unsigned char **srcMsg, unsigned short *srcMsgLen,
-		unsigned char fieldNo) {
+		unsigned char fieldNo, saveData PsaveData) {
 	int ret = 0;
 	int len = 0;
 	unsigned char *backupMsg = *srcMsg;
@@ -556,30 +561,12 @@ static int unpakANSField(unsigned char **srcMsg, unsigned short *srcMsgLen,
 		return ERR_INVALID_MSG;
 	}
 
-	if (FS.fdSet[fieldNo - 1].attr.lenAtr == VAR) {
-		switch (FS.fdSet[fieldNo - 1].attr.varlenLen) {
-		case L:
-			len = *backupMsg;
-			backupMsg++;
-			*srcMsgLen -= 1;
-			break;
-		case LL:
-			len = ((*backupMsg & 0xF0)>>4) * 10 + (*backupMsg & 0x0F);
-			backupMsg++;
-			*srcMsgLen -= 1;
-			break;
-		case LLL:
-		//	printf("len1:[%02X]\n",backupMsg[0]);
-		//	printf("len2:[%02X]\n",backupMsg[1]);
-			len = (*backupMsg & 0x0F) * 100 + ((backupMsg[1] & 0xF0)>>4) * 10
-				+ (backupMsg[1] & 0x0F);
-			backupMsg += 2;
-			*srcMsgLen -= 2;
-			break;
-		default:
-			return ERR_INVALID_LENLENATTR; //the length's length's attribute is out of range only L LL LLL is valid
-			break;
-		}
+	ret = unpackLength(&backupMsg,  srcMsgLen, &len,  fieldNo);
+
+	if(ret)
+	{
+		return ret;
+	}
 
 		printf("len=>%d\n", len);
 
@@ -612,11 +599,13 @@ static int unpakANSField(unsigned char **srcMsg, unsigned short *srcMsgLen,
 	FS.fdSet[fieldNo - 1].content.length = len;
 	*srcMsg = backupMsg + len;
 	*srcMsgLen -= len;
+	
+	PsaveData(fieldNo, FS.fdSet[fieldNo - 1].content.value,FS.fdSet[fieldNo - 1].content.length );
 	return ret;
 }
 
 static int unpakSField(unsigned char **srcMsg, unsigned short *srcMsgLen,
-		unsigned char fieldNo) {
+		unsigned char fieldNo, saveData PsaveData) {
 	int ret = 0;
 	int len = 0;
 	unsigned char *backupMsg = *srcMsg;
@@ -631,26 +620,11 @@ static int unpakSField(unsigned char **srcMsg, unsigned short *srcMsgLen,
 		return ERR_INVALID_MSG;
 	}
 
-	switch (FS.fdSet[fieldNo - 1].attr.varlenLen) {
-	case L:
-		len = *backupMsg;
-		backupMsg++;
-		*srcMsgLen -= 1;
-		break;
-	case LL:
-		len = ((*backupMsg & 0xF0)>>4) * 10 + (*backupMsg & 0x0F);
-		backupMsg++;
-		*srcMsgLen -= 1;
-		break;
-	case LLL:
-		len = (*backupMsg & 0x0F) * 100 + ((backupMsg[1] & 0xF0)>>4) * 10
-				+ (backupMsg[1] & 0x0F);
-		backupMsg += 2;
-		*srcMsgLen -= 2;
-		break;
-	default:
-		return ERR_INVALID_LENLENATTR; //the length's length's attribute is out of range only L LL LLL is valid
-		break;
+		ret = unpackLength(&backupMsg,  srcMsgLen, &len,  fieldNo);
+
+	if(ret)
+	{
+		return ret;
 	}
 
 	// if it's not allocated mem then allocated the len + 2 space,additional two is for store the '\0' end of a string
@@ -675,12 +649,13 @@ static int unpakSField(unsigned char **srcMsg, unsigned short *srcMsgLen,
 	FS.fdSet[fieldNo - 1].content.length = len;
 	*srcMsg = backupMsg + len;
 	*srcMsgLen -= len;
+	PsaveData(fieldNo, FS.fdSet[fieldNo - 1].content.value,FS.fdSet[fieldNo - 1].content.length );
 
 	return ret;
 }
 
 static int unpakBField(unsigned char **srcMsg, unsigned short *srcMsgLen,
-		unsigned char fieldNo) {
+		unsigned char fieldNo, saveData PsaveData) {
 	int ret = 0;
 	int len = 0;
 	unsigned char *backupMsg = *srcMsg;
@@ -695,26 +670,11 @@ static int unpakBField(unsigned char **srcMsg, unsigned short *srcMsgLen,
 		return ERR_INVALID_MSG;
 	}
 
-	switch (FS.fdSet[fieldNo - 1].attr.varlenLen) {
-	case L:
-		len = *backupMsg;
-		backupMsg++;
-		*srcMsgLen -= 1;
-		break;
-	case LL:
-		len = ((*backupMsg & 0xF0)>>4) * 10 + (*backupMsg & 0x0F);
-		backupMsg++;
-		*srcMsgLen -= 1;
-		break;
-	case LLL:
-		len = (*backupMsg & 0x0F) * 100 + ((backupMsg[1] & 0xF0)>>4) * 10
-				+ (backupMsg[1] & 0x0F);
-		backupMsg += 2;
-		*srcMsgLen -= 2;
-		break;
-	default:
-		return ERR_INVALID_LENLENATTR; //the length's length's attribute is out of range only L LL LLL is valid
-		break;
+		ret = unpackLength(&backupMsg,  srcMsgLen, &len,  fieldNo);
+
+	if(ret)
+	{
+		return ret;
 	}
 
 	// if it's not allocated mem then allocated the len + 2 space,additional two is for store the '\0' end of a string
@@ -736,11 +696,13 @@ static int unpakBField(unsigned char **srcMsg, unsigned short *srcMsgLen,
 	FS.fdSet[fieldNo - 1].content.length = len;
 	*srcMsg = backupMsg + len;
 	*srcMsgLen -= len;
+	
+	PsaveData(fieldNo, FS.fdSet[fieldNo - 1].content.value,FS.fdSet[fieldNo - 1].content.length );
 	return ret;
 }
 
 static int unpakTrackZField(unsigned char **srcMsg, unsigned short *srcMsgLen,
-		unsigned char fieldNo) {
+		unsigned char fieldNo, saveData PsaveData) {
 	int ret = 0;
 	int len = 0;
 	unsigned char *backupMsg = *srcMsg;
@@ -755,26 +717,11 @@ static int unpakTrackZField(unsigned char **srcMsg, unsigned short *srcMsgLen,
 		return ERR_INVALID_MSG;
 	}
 
-	switch (FS.fdSet[fieldNo - 1].attr.varlenLen) {
-	case L:
-		len = *backupMsg;
-		backupMsg++;
-		*srcMsgLen -= 1;
-		break;
-	case LL:
-		len = (*backupMsg & 0xF0) * 10 + (*backupMsg & 0x0F);
-		backupMsg++;
-		*srcMsgLen -= 1;
-		break;
-	case LLL:
-		len = (*backupMsg & 0x0F) * 100 + (backupMsg[1] & 0xF0) * 10
-				+ (backupMsg[1] & 0x0F);
-		backupMsg += 2;
-		*srcMsgLen -= 2;
-		break;
-	default:
-		return ERR_INVALID_LENLENATTR; //the length's length's attribute is out of range only L LL LLL is valid
-		break;
+		ret = unpackLength(&backupMsg,  srcMsgLen, &len,  fieldNo);
+
+	if(ret)
+	{
+		return ret;
 	}
 
 	// if it's not allocated mem then allocated the len + 2 space,additional two is for store the '\0' end of a string
@@ -798,10 +745,12 @@ static int unpakTrackZField(unsigned char **srcMsg, unsigned short *srcMsgLen,
 	FS.fdSet[fieldNo - 1].content.length = len;
 	*srcMsg = backupMsg + ((len + 1) / 2);
 	*srcMsgLen -= ((len + 1) / 2);
+	
+	PsaveData(fieldNo, FS.fdSet[fieldNo - 1].content.value,FS.fdSet[fieldNo - 1].content.length );
 	return ret;
 }
 
-int unpackISO8583Msg(unsigned char *srcMsg, unsigned short srcMsgLen) {
+int unpackISO8583Msg(unsigned char *srcMsg, unsigned short srcMsgLen, saveData PsaveData) {
 	int ret = 0;
 	FdNoSet fns;
 	unsigned char *bitmap = srcMsg + FS.fdSet[0].attr.maxLen/2;
@@ -835,23 +784,23 @@ int unpackISO8583Msg(unsigned char *srcMsg, unsigned short srcMsgLen) {
 		switch (FS.fdSet[fns.fnSet[i] - 1].attr.contentAtr) {
 		case N:
 			printf("N\n");
-			ret = unpakNumericField(&backupMsg, &srcMsgLen, fns.fnSet[i]);
+			ret = unpakNumericField(&backupMsg, &srcMsgLen, fns.fnSet[i],  PsaveData);
 			break;
 		case A:
 			printf("A\n");
-			ret = unpakAField(&backupMsg, &srcMsgLen, fns.fnSet[i]);
+			ret = unpakAField(&backupMsg, &srcMsgLen, fns.fnSet[i],  PsaveData);
 			break;
 		case AN:
 			printf("AN\n");
-			ret = unpakANField(&backupMsg, &srcMsgLen, fns.fnSet[i]);
+			ret = unpakANField(&backupMsg, &srcMsgLen, fns.fnSet[i],  PsaveData);
 			break;
 		case ANS:
 			printf("ANS\n");
-			ret = unpakANSField(&backupMsg, &srcMsgLen, fns.fnSet[i]);
+			ret = unpakANSField(&backupMsg, &srcMsgLen, fns.fnSet[i],  PsaveData);
 			break;
 		case S:
 			printf("S\n");
-			ret = unpakSField(&backupMsg, &srcMsgLen, fns.fnSet[i]);
+			ret = unpakSField(&backupMsg, &srcMsgLen, fns.fnSet[i],  PsaveData);
 			break;
 		case Z:
 			printf("Z\n");
@@ -859,7 +808,7 @@ int unpackISO8583Msg(unsigned char *srcMsg, unsigned short srcMsgLen) {
 			break;
 		case B:
 			printf("B\n");
-			ret = unpakBField(&backupMsg, &srcMsgLen, fns.fnSet[i]);
+			ret = unpakBField(&backupMsg, &srcMsgLen, fns.fnSet[i],  PsaveData);
 			break;
 		default:
 			return ERR_INVALID_LENLENATTR; //the length's length's attribute is out of range only L LL LLL is valid
