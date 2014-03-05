@@ -63,8 +63,7 @@ static int packLength(unsigned char *desMsg, unsigned short *desMsgLen,
 		return ret;
 	}
 
-	if(fd->attr.lenAtr == FIX)
-	{
+	if (fd->attr.lenAtr == FIX) {
 		*desMsgLen = 0;
 		return 0;
 	}
@@ -113,7 +112,7 @@ static int packNumericField(unsigned char *desMsg, unsigned short *desMsgLen,
 //	*desMsgLen = len;
 
 	if (ret) {
-	//	printf("hexStringToByteArray ret=%d", ret);
+		//	printf("hexStringToByteArray ret=%d", ret);
 		return ret;
 	}
 
@@ -124,7 +123,7 @@ static int packNumericField(unsigned char *desMsg, unsigned short *desMsgLen,
 	}
 
 	memcpy(desMsg + *desMsgLen, bcdBuf, len);
-	*desMsgLen += ((fd->content.length+1) / 2);
+	*desMsgLen += ((fd->content.length + 1) / 2);
 
 	return ret;
 }
@@ -298,31 +297,31 @@ int packISO8583Msg(unsigned char *des8583Msg, unsigned short *desMsgLen,
 		switch (FS.fdSet[fns->fnSet[i] - 1].attr.contentAtr) {
 		case N:
 			ret = packNumericField(des8583Msg + *desMsgLen, &swapLen,
-					&FS.fdSet[fns->fnSet[i]- 1]);
+					&FS.fdSet[fns->fnSet[i] - 1]);
 			break;
 		case A:
 			ret = packAField(des8583Msg + *desMsgLen, &swapLen,
-					&FS.fdSet[fns->fnSet[i]- 1]);
+					&FS.fdSet[fns->fnSet[i] - 1]);
 			break;
 		case AN:
 			ret = packANField(des8583Msg + *desMsgLen, &swapLen,
-					&FS.fdSet[fns->fnSet[i]- 1]);
+					&FS.fdSet[fns->fnSet[i] - 1]);
 			break;
 		case ANS:
 			ret = packANSField(des8583Msg + *desMsgLen, &swapLen,
-					&FS.fdSet[fns->fnSet[i]- 1]);
+					&FS.fdSet[fns->fnSet[i] - 1]);
 			break;
 		case Z:
 			ret = packZField(des8583Msg + *desMsgLen, &swapLen,
-					&FS.fdSet[fns->fnSet[i]- 1]);
+					&FS.fdSet[fns->fnSet[i] - 1]);
 			break;
 		case B:
 			ret = packBField(des8583Msg + *desMsgLen, &swapLen,
-					&FS.fdSet[fns->fnSet[i]- 1]);
+					&FS.fdSet[fns->fnSet[i] - 1]);
 			break;
 		case S:
 			ret = packSField(des8583Msg + *desMsgLen, &swapLen,
-					&FS.fdSet[fns->fnSet[i]- 1]);
+					&FS.fdSet[fns->fnSet[i] - 1]);
 			break;
 		default:
 			return ERR_INVALID_CONTENTATTR;
@@ -330,7 +329,7 @@ int packISO8583Msg(unsigned char *des8583Msg, unsigned short *desMsgLen,
 		}
 
 		*desMsgLen += swapLen;
-		
+
 		if (fns->fnSet[i] == 1) { //because bitmap is after message code so when pack field two should skip the bitmap's room
 			*desMsgLen += bitmapSize; //bitmap size may be standard 64 bits or extend 128 bits
 		}
@@ -344,6 +343,7 @@ static int unpakNumericField(unsigned char **srcMsg, unsigned short *srcMsgLen,
 	int ret = 0;
 	int len = 0;
 	unsigned char *backupMsg = *srcMsg;
+	char *tempPtr = NULL;
 
 	//check if the message is valid
 	if (CHECK_M(backupMsg) || !(*srcMsgLen > 0)) {
@@ -351,24 +351,25 @@ static int unpakNumericField(unsigned char **srcMsg, unsigned short *srcMsgLen,
 	}
 
 	//check if the field no is out of rang if yes then return ERR_INVALID_MSG
-	if ((fieldNo > bitmapSize*8) || (fieldNo < 0)) {
+	if ((fieldNo > bitmapSize * 8) || (fieldNo < 0)) {
 		return ERR_INVALID_MSG;
 	}
 
-	if(FS.fdSet[fieldNo - 1].attr.lenAtr == VAR)
-	{
-		switch (FS.fdSet[fieldNo- 1].attr.varlenLen) {
+	if (FS.fdSet[fieldNo - 1].attr.lenAtr == VAR) {
+		switch (FS.fdSet[fieldNo - 1].attr.varlenLen) {
 		case L:
 			len = *backupMsg;
 			backupMsg++;
 			*srcMsgLen -= 1;
 			break;
 		case LL:
-			len = (*backupMsg & 0xF0) * 10 + (*backupMsg & 0x0F);
+			len = ((*backupMsg & 0xF0)>>4) * 10 + (*backupMsg & 0x0F);
 			backupMsg++;
 			*srcMsgLen -= 1;
 			break;
 		case LLL:
+//			printf("len1:[%02X]\n",*backupMsg);
+//			printf("len2:[%02X]\n",backupMsg[1]);
 			len = (*backupMsg & 0x0F) * 100 + (backupMsg[1] & 0xF0) * 10
 					+ (backupMsg[1] & 0x0F);
 			backupMsg += 2;
@@ -379,36 +380,34 @@ static int unpakNumericField(unsigned char **srcMsg, unsigned short *srcMsgLen,
 			break;
 		}
 
-		if((len >  FS.fdSet[fieldNo- 1].attr.maxLen) || (len <= 0))
-		{
+		if ((len > FS.fdSet[fieldNo - 1].attr.maxLen) || (len <= 0)) {
+			printf("len->%d\n", len);
 			return (ERR_BASELEN_WRONG - fieldNo);
 		}
-	}
-	else
-	{
-		len = FS.fdSet[fieldNo- 1].attr.maxLen;
+	} else {
+		len = FS.fdSet[fieldNo - 1].attr.maxLen;
 	}
 
-	
 	// if it's not allocated mem then allocated the len + 2 space,additional two is for store the '\0' end of a string
 	// and RFU one for dealing overflow
-	if (CHECK_M(FS.fdSet[fieldNo- 1].content.value)
-			|| (FS.fdSet[fieldNo- 1].content.length < len)) {
-		FS.fdSet[fieldNo- 1].content.value = (char *) malloc(
+	if (CHECK_M(FS.fdSet[fieldNo - 1].content.value)
+			|| (FS.fdSet[fieldNo - 1].content.length < len)) {
+		FS.fdSet[fieldNo - 1].content.value = (char *) malloc(
 				sizeof(char) * (len + 2));
 
-		if (CHECK_M(FS.fdSet[fieldNo- 1].content.value))	//allocat fail
+		if (CHECK_M(FS.fdSet[fieldNo - 1].content.value))	//allocat fail
 				{
 			return ERR_ALOM_FAILED;
 		}
 	}
 
-	memset(FS.fdSet[fieldNo- 1].content.value, 0x00, (len + 2));
-	ret = byteArrayToHexString((char *) FS.fdSet[fieldNo- 1].content.value,
+	memset(FS.fdSet[fieldNo - 1].content.value, 0x00, (len + 2));
+	ret = byteArrayToHexString((char *) FS.fdSet[fieldNo - 1].content.value,
 			backupMsg, (int) ((len + 1) / 2));
-	backupMsg = (unsigned char *) FS.fdSet[fieldNo- 1].content.value;
-	backupMsg[len] = '\0';
-	FS.fdSet[fieldNo- 1].content.length = len;
+	tempPtr = (char *) FS.fdSet[fieldNo - 1].content.value;
+	tempPtr[len] = '\0';
+	printf("value->%s\n", tempPtr);
+	FS.fdSet[fieldNo - 1].content.length = len;
 	*srcMsgLen -= (len + 1) / 2;
 	*srcMsg = backupMsg + ((len + 1) / 2);
 	return ret;
@@ -419,6 +418,7 @@ static int unpakAField(unsigned char **srcMsg, unsigned short *srcMsgLen,
 	int ret = 0;
 	int len = 0;
 	unsigned char *backupMsg = *srcMsg;
+	char *temPtr;
 
 	//check if the message is valid
 	if (CHECK_M(backupMsg) || !(*srcMsgLen > 0)) {
@@ -426,23 +426,23 @@ static int unpakAField(unsigned char **srcMsg, unsigned short *srcMsgLen,
 	}
 
 	//check if the field no is out of rang if yes then return ERR_INVALID_MSG
-	if ((fieldNo > bitmapSize*8) || (fieldNo < 0)) {
+	if ((fieldNo > bitmapSize * 8) || (fieldNo < 0)) {
 		return ERR_INVALID_MSG;
 	}
 
-	switch (FS.fdSet[fieldNo- 1].attr.varlenLen) {
+	switch (FS.fdSet[fieldNo - 1].attr.varlenLen) {
 	case L:
 		len = *backupMsg;
 		backupMsg++;
 		*srcMsgLen -= 1;
 		break;
 	case LL:
-		len = (*backupMsg & 0xF0) * 10 + (*backupMsg & 0x0F);
+		len = ((*backupMsg & 0xF0)>>4) * 10 + (*backupMsg & 0x0F);
 		backupMsg++;
 		*srcMsgLen -= 1;
 		break;
 	case LLL:
-		len = (*backupMsg & 0x0F) * 100 + (backupMsg[1] & 0xF0) * 10
+		len = (*backupMsg & 0x0F) * 100 + ((backupMsg[1] & 0xF0)>>4) * 10
 				+ (backupMsg[1] & 0x0F);
 		backupMsg += 2;
 		*srcMsgLen -= 2;
@@ -454,22 +454,23 @@ static int unpakAField(unsigned char **srcMsg, unsigned short *srcMsgLen,
 
 	// if it's not allocated mem then allocated the len + 2 space,additional two is for store the '\0' end of a string
 	// and RFU one for dealing overflow
-	if (CHECK_M(FS.fdSet[fieldNo- 1].content.value)
-			|| (FS.fdSet[fieldNo- 1].content.length < len)) {
-		FS.fdSet[fieldNo- 1].content.value = (char *) malloc(
+	if (CHECK_M(FS.fdSet[fieldNo - 1].content.value)
+			|| (FS.fdSet[fieldNo - 1].content.length < len)) {
+		FS.fdSet[fieldNo - 1].content.value = (char *) malloc(
 				sizeof(char) * (len + 2));
 
-		if (CHECK_M(FS.fdSet[fieldNo- 1].content.value))	//allocat fail
+		if (CHECK_M(FS.fdSet[fieldNo - 1].content.value))	//allocat fail
 				{
 			return ERR_ALOM_FAILED;
 		}
 	}
 
-	memset(FS.fdSet[fieldNo- 1].content.value, 0x00, (len + 2));
-	memcpy(FS.fdSet[fieldNo- 1].content.value, backupMsg, len);
-	backupMsg = (unsigned char *) FS.fdSet[fieldNo- 1].content.value;
-	backupMsg[len] = '\0';
-	FS.fdSet[fieldNo- 1].content.length = len;
+	memset(FS.fdSet[fieldNo - 1].content.value, 0x00, (len + 2));
+	memcpy(FS.fdSet[fieldNo - 1].content.value, backupMsg, len);
+	temPtr = (char *) FS.fdSet[fieldNo - 1].content.value;
+	temPtr[len] = '\0';
+	printf("value->%s\n", temPtr);
+	FS.fdSet[fieldNo - 1].content.length = len;
 	*srcMsg = backupMsg + len;
 	*srcMsgLen -= len;
 	return ret;
@@ -480,30 +481,31 @@ static int unpakANField(unsigned char **srcMsg, unsigned short *srcMsgLen,
 	int ret = 0;
 	int len = 0;
 	unsigned char *backupMsg = *srcMsg;
-
+	char *temPtr;
+	
 	//check if the message is valid
 	if (CHECK_M(backupMsg) || !(srcMsgLen > 0)) {
 		return ERR_INVALID_MSG;
 	}
 
 	//check if the field no is out of rang if yes then return ERR_INVALID_MSG
-	if ((fieldNo > bitmapSize*8) || (fieldNo < 0)) {
+	if ((fieldNo > bitmapSize * 8) || (fieldNo < 0)) {
 		return ERR_INVALID_MSG;
 	}
 
-	switch (FS.fdSet[fieldNo- 1].attr.varlenLen) {
+	switch (FS.fdSet[fieldNo - 1].attr.varlenLen) {
 	case L:
 		len = *backupMsg;
 		backupMsg++;
 		*srcMsgLen -= 1;
 		break;
 	case LL:
-		len = (*backupMsg & 0xF0) * 10 + (*backupMsg & 0x0F);
+		len = ((*backupMsg & 0xF0)>>4) * 10 + (*backupMsg & 0x0F);
 		backupMsg++;
 		*srcMsgLen -= 1;
 		break;
 	case LLL:
-		len = (*backupMsg & 0x0F) * 100 + (backupMsg[1] & 0xF0) * 10
+		len = (*backupMsg & 0x0F) * 100 + ((backupMsg[1] & 0xF0)>>4) * 10
 				+ (backupMsg[1] & 0x0F);
 		backupMsg += 2;
 		*srcMsgLen -= 2;
@@ -515,22 +517,23 @@ static int unpakANField(unsigned char **srcMsg, unsigned short *srcMsgLen,
 
 	// if it's not allocated mem then allocated the len + 2 space,additional two is for store the '\0' end of a string
 	// and RFU one for dealing overflow
-	if (CHECK_M(FS.fdSet[fieldNo- 1].content.value)
-			|| (FS.fdSet[fieldNo- 1].content.length < len)) {
-		FS.fdSet[fieldNo- 1].content.value = (char *) malloc(
+	if (CHECK_M(FS.fdSet[fieldNo - 1].content.value)
+			|| (FS.fdSet[fieldNo - 1].content.length < len)) {
+		FS.fdSet[fieldNo - 1].content.value = (char *) malloc(
 				sizeof(char) * (len + 2));
 
-		if (CHECK_M(FS.fdSet[fieldNo- 1].content.value))	//allocat fail
+		if (CHECK_M(FS.fdSet[fieldNo - 1].content.value))	//allocat fail
 				{
 			return ERR_ALOM_FAILED;
 		}
 	}
 
-	memset(FS.fdSet[fieldNo- 1].content.value, 0x00, (len + 2));
-	memcpy(FS.fdSet[fieldNo- 1].content.value, backupMsg, len);
-	backupMsg = (unsigned char *) FS.fdSet[fieldNo- 1].content.value;
-	backupMsg[len] = '\0';
-	FS.fdSet[fieldNo- 1].content.length = len;
+	memset(FS.fdSet[fieldNo - 1].content.value, 0x00, (len + 2));
+	memcpy(FS.fdSet[fieldNo - 1].content.value, backupMsg, len);
+	temPtr = (char *) FS.fdSet[fieldNo - 1].content.value;
+	temPtr[len] = '\0';
+	printf("value->%s\n", temPtr);
+	FS.fdSet[fieldNo - 1].content.length = len;
 	*srcMsg = backupMsg + len;
 	*srcMsgLen -= len;
 	return ret;
@@ -541,6 +544,7 @@ static int unpakANSField(unsigned char **srcMsg, unsigned short *srcMsgLen,
 	int ret = 0;
 	int len = 0;
 	unsigned char *backupMsg = *srcMsg;
+	char *temPtr;
 
 	//check if the message is valid
 	if (CHECK_M(backupMsg) || !(*srcMsgLen > 0)) {
@@ -548,50 +552,64 @@ static int unpakANSField(unsigned char **srcMsg, unsigned short *srcMsgLen,
 	}
 
 	//check if the field no is out of rang if yes then return ERR_INVALID_MSG
-	if ((fieldNo > bitmapSize*8) || (fieldNo < 0)) {
+	if ((fieldNo > bitmapSize * 8) || (fieldNo < 0)) {
 		return ERR_INVALID_MSG;
 	}
 
-	switch (FS.fdSet[fieldNo- 1].attr.varlenLen) {
-	case L:
-		len = *backupMsg;
-		backupMsg++;
-		*srcMsgLen -= 1;
-		break;
-	case LL:
-		len = (*backupMsg & 0xF0) * 10 + (*backupMsg & 0x0F);
-		backupMsg++;
-		*srcMsgLen -= 1;
-		break;
-	case LLL:
-		len = (*backupMsg & 0x0F) * 100 + (backupMsg[1] & 0xF0) * 10
+	if (FS.fdSet[fieldNo - 1].attr.lenAtr == VAR) {
+		switch (FS.fdSet[fieldNo - 1].attr.varlenLen) {
+		case L:
+			len = *backupMsg;
+			backupMsg++;
+			*srcMsgLen -= 1;
+			break;
+		case LL:
+			len = ((*backupMsg & 0xF0)>>4) * 10 + (*backupMsg & 0x0F);
+			backupMsg++;
+			*srcMsgLen -= 1;
+			break;
+		case LLL:
+		//	printf("len1:[%02X]\n",backupMsg[0]);
+		//	printf("len2:[%02X]\n",backupMsg[1]);
+			len = (*backupMsg & 0x0F) * 100 + ((backupMsg[1] & 0xF0)>>4) * 10
 				+ (backupMsg[1] & 0x0F);
-		backupMsg += 2;
-		*srcMsgLen -= 2;
-		break;
-	default:
-		return ERR_INVALID_LENLENATTR; //the length's length's attribute is out of range only L LL LLL is valid
-		break;
+			backupMsg += 2;
+			*srcMsgLen -= 2;
+			break;
+		default:
+			return ERR_INVALID_LENLENATTR; //the length's length's attribute is out of range only L LL LLL is valid
+			break;
+		}
+
+		printf("len=>%d\n", len);
+
+		if ((len > FS.fdSet[fieldNo - 1].attr.maxLen) || (len <= 0)) {
+			
+			return (ERR_BASELEN_WRONG - fieldNo);
+		}
+	} else {
+		len = FS.fdSet[fieldNo - 1].attr.maxLen;
 	}
 
 	// if it's not allocated mem then allocated the len + 2 space,additional two is for store the '\0' end of a string
 	// and RFU one for dealing overflow
-	if (CHECK_M(FS.fdSet[fieldNo- 1].content.value)
-			|| (FS.fdSet[fieldNo- 1].content.length < len)) {
-		FS.fdSet[fieldNo- 1].content.value = (char *) malloc(
+	if (CHECK_M(FS.fdSet[fieldNo - 1].content.value)
+			|| (FS.fdSet[fieldNo - 1].content.length < len)) {
+		FS.fdSet[fieldNo - 1].content.value = (char *) malloc(
 				sizeof(char) * (len + 2));
 
-		if (CHECK_M(FS.fdSet[fieldNo- 1].content.value))	//allocat fail
+		if (CHECK_M(FS.fdSet[fieldNo - 1].content.value))	//allocat fail
 				{
 			return ERR_ALOM_FAILED;
 		}
 	}
 
-	memset(FS.fdSet[fieldNo- 1].content.value, 0x00, (len + 2));
-	memcpy(FS.fdSet[fieldNo- 1].content.value, backupMsg, len);
-	backupMsg = (unsigned char *) FS.fdSet[fieldNo- 1].content.value;
-	backupMsg[len] = '\0';
-	FS.fdSet[fieldNo- 1].content.length = len;
+	memset(FS.fdSet[fieldNo - 1].content.value, 0x00, (len + 2));
+	memcpy(FS.fdSet[fieldNo - 1].content.value, backupMsg, len);
+	temPtr = (char *) FS.fdSet[fieldNo - 1].content.value;
+	temPtr[len] = '\0';
+	printf("value->[%s]\n", temPtr);
+	FS.fdSet[fieldNo - 1].content.length = len;
 	*srcMsg = backupMsg + len;
 	*srcMsgLen -= len;
 	return ret;
@@ -602,30 +620,30 @@ static int unpakSField(unsigned char **srcMsg, unsigned short *srcMsgLen,
 	int ret = 0;
 	int len = 0;
 	unsigned char *backupMsg = *srcMsg;
-
+	char *temPtr;
 	//check if the message is valid
 	if (CHECK_M(backupMsg) || !(*srcMsgLen > 0)) {
 		return ERR_INVALID_MSG;
 	}
 
 	//check if the field no is out of rang if yes then return ERR_INVALID_MSG
-	if ((fieldNo > bitmapSize*8) || (fieldNo < 0)) {
+	if ((fieldNo > bitmapSize * 8) || (fieldNo < 0)) {
 		return ERR_INVALID_MSG;
 	}
 
-	switch (FS.fdSet[fieldNo- 1].attr.varlenLen) {
+	switch (FS.fdSet[fieldNo - 1].attr.varlenLen) {
 	case L:
 		len = *backupMsg;
 		backupMsg++;
 		*srcMsgLen -= 1;
 		break;
 	case LL:
-		len = (*backupMsg & 0xF0) * 10 + (*backupMsg & 0x0F);
+		len = ((*backupMsg & 0xF0)>>4) * 10 + (*backupMsg & 0x0F);
 		backupMsg++;
 		*srcMsgLen -= 1;
 		break;
 	case LLL:
-		len = (*backupMsg & 0x0F) * 100 + (backupMsg[1] & 0xF0) * 10
+		len = (*backupMsg & 0x0F) * 100 + ((backupMsg[1] & 0xF0)>>4) * 10
 				+ (backupMsg[1] & 0x0F);
 		backupMsg += 2;
 		*srcMsgLen -= 2;
@@ -637,23 +655,24 @@ static int unpakSField(unsigned char **srcMsg, unsigned short *srcMsgLen,
 
 	// if it's not allocated mem then allocated the len + 2 space,additional two is for store the '\0' end of a string
 	// and RFU one for dealing overflow
-	if (CHECK_M(FS.fdSet[fieldNo- 1].content.value)
-			|| (FS.fdSet[fieldNo- 1].content.length < len)) {
+	if (CHECK_M(FS.fdSet[fieldNo - 1].content.value)
+			|| (FS.fdSet[fieldNo - 1].content.length < len)) {
 
-		FS.fdSet[fieldNo- 1].content.value = (char *) malloc(
+		FS.fdSet[fieldNo - 1].content.value = (char *) malloc(
 				sizeof(char) * (len + 2));
 
-		if (CHECK_M(FS.fdSet[fieldNo- 1].content.value))	//allocat fail
+		if (CHECK_M(FS.fdSet[fieldNo - 1].content.value))	//allocat fail
 				{
 			return ERR_ALOM_FAILED;
 		}
 	}
 
-	memset(FS.fdSet[fieldNo- 1].content.value, 0x00, (len + 2));
-	memcpy(FS.fdSet[fieldNo- 1].content.value, backupMsg, len);
-	backupMsg = (unsigned char *) FS.fdSet[fieldNo- 1].content.value;
-	backupMsg[len] = '\0';
-	FS.fdSet[fieldNo- 1].content.length = len;
+	memset(FS.fdSet[fieldNo - 1].content.value, 0x00, (len + 2));
+	memcpy(FS.fdSet[fieldNo - 1].content.value, backupMsg, len);
+	temPtr = (char *) FS.fdSet[fieldNo - 1].content.value;
+	temPtr[len] = '\0';
+	printf("value->%s\n", temPtr);
+	FS.fdSet[fieldNo - 1].content.length = len;
 	*srcMsg = backupMsg + len;
 	*srcMsgLen -= len;
 
@@ -672,23 +691,23 @@ static int unpakBField(unsigned char **srcMsg, unsigned short *srcMsgLen,
 	}
 
 	//check if the field no is out of rang if yes then return ERR_INVALID_MSG
-	if ((fieldNo > bitmapSize*8) || (fieldNo < 0)) {
+	if ((fieldNo > bitmapSize * 8) || (fieldNo < 0)) {
 		return ERR_INVALID_MSG;
 	}
 
-	switch (FS.fdSet[fieldNo- 1].attr.varlenLen) {
+	switch (FS.fdSet[fieldNo - 1].attr.varlenLen) {
 	case L:
 		len = *backupMsg;
 		backupMsg++;
 		*srcMsgLen -= 1;
 		break;
 	case LL:
-		len = (*backupMsg & 0xF0) * 10 + (*backupMsg & 0x0F);
+		len = ((*backupMsg & 0xF0)>>4) * 10 + (*backupMsg & 0x0F);
 		backupMsg++;
 		*srcMsgLen -= 1;
 		break;
 	case LLL:
-		len = (*backupMsg & 0x0F) * 100 + (backupMsg[1] & 0xF0) * 10
+		len = (*backupMsg & 0x0F) * 100 + ((backupMsg[1] & 0xF0)>>4) * 10
 				+ (backupMsg[1] & 0x0F);
 		backupMsg += 2;
 		*srcMsgLen -= 2;
@@ -700,21 +719,21 @@ static int unpakBField(unsigned char **srcMsg, unsigned short *srcMsgLen,
 
 	// if it's not allocated mem then allocated the len + 2 space,additional two is for store the '\0' end of a string
 	// and RFU one for dealing overflow
-	if (CHECK_M(FS.fdSet[fieldNo- 1].content.value)
-			|| (FS.fdSet[fieldNo- 1].content.length < len)) {
-		FS.fdSet[fieldNo- 1].content.value = (unsigned char *) malloc(
+	if (CHECK_M(FS.fdSet[fieldNo - 1].content.value)
+			|| (FS.fdSet[fieldNo - 1].content.length < len)) {
+		FS.fdSet[fieldNo - 1].content.value = (unsigned char *) malloc(
 				sizeof(unsigned char) * len);
 
-		if (CHECK_M(FS.fdSet[fieldNo- 1].content.value))	//allocat fail
+		if (CHECK_M(FS.fdSet[fieldNo - 1].content.value))	//allocat fail
 				{
 			return ERR_ALOM_FAILED;
 		}
 	}
 
-	memset(FS.fdSet[fieldNo- 1].content.value, 0x00, len);
-	memcpy(FS.fdSet[fieldNo- 1].content.value, backupMsg, len);
+	memset(FS.fdSet[fieldNo - 1].content.value, 0x00, len);
+	memcpy(FS.fdSet[fieldNo - 1].content.value, backupMsg, len);
 //	FS.fdSet[fieldNo].content.value[len] = '\0';
-	FS.fdSet[fieldNo- 1].content.length = len;
+	FS.fdSet[fieldNo - 1].content.length = len;
 	*srcMsg = backupMsg + len;
 	*srcMsgLen -= len;
 	return ret;
@@ -732,11 +751,11 @@ static int unpakTrackZField(unsigned char **srcMsg, unsigned short *srcMsgLen,
 	}
 
 	//check if the field no is out of rang if yes then return ERR_INVALID_MSG
-	if ((fieldNo > bitmapSize*8) || (fieldNo < 0)) {
+	if ((fieldNo > bitmapSize * 8) || (fieldNo < 0)) {
 		return ERR_INVALID_MSG;
 	}
 
-	switch (FS.fdSet[fieldNo- 1].attr.varlenLen) {
+	switch (FS.fdSet[fieldNo - 1].attr.varlenLen) {
 	case L:
 		len = *backupMsg;
 		backupMsg++;
@@ -760,23 +779,23 @@ static int unpakTrackZField(unsigned char **srcMsg, unsigned short *srcMsgLen,
 
 	// if it's not allocated mem then allocated the len + 2 space,additional two is for store the '\0' end of a string
 	// and RFU one for dealing overflow
-	if (CHECK_M(FS.fdSet[fieldNo- 1].content.value)
-			|| (FS.fdSet[fieldNo- 1].content.length < len)) {
-		FS.fdSet[fieldNo- 1].content.value = (char *) malloc(
+	if (CHECK_M(FS.fdSet[fieldNo - 1].content.value)
+			|| (FS.fdSet[fieldNo - 1].content.length < len)) {
+		FS.fdSet[fieldNo - 1].content.value = (char *) malloc(
 				sizeof(char) * (len + 2));
 
-		if (CHECK_M(FS.fdSet[fieldNo- 1].content.value))	//allocat fail
+		if (CHECK_M(FS.fdSet[fieldNo - 1].content.value))	//allocat fail
 				{
 			return ERR_ALOM_FAILED;
 		}
 	}
 
-	memset(FS.fdSet[fieldNo- 1].content.value, 0x00, (len + 2));
-	ret = byteArrayToHexString((char *) FS.fdSet[fieldNo- 1].content.value,
+	memset(FS.fdSet[fieldNo - 1].content.value, 0x00, (len + 2));
+	ret = byteArrayToHexString((char *) FS.fdSet[fieldNo - 1].content.value,
 			backupMsg, (int) ((len + 1) / 2));
-	backupMsg = (unsigned char *) FS.fdSet[fieldNo- 1].content.value;
+	backupMsg = (unsigned char *) FS.fdSet[fieldNo - 1].content.value;
 	backupMsg[len] = '\0';
-	FS.fdSet[fieldNo- 1].content.length = len;
+	FS.fdSet[fieldNo - 1].content.length = len;
 	*srcMsg = backupMsg + ((len + 1) / 2);
 	*srcMsgLen -= ((len + 1) / 2);
 	return ret;
@@ -785,8 +804,8 @@ static int unpakTrackZField(unsigned char **srcMsg, unsigned short *srcMsgLen,
 int unpackISO8583Msg(unsigned char *srcMsg, unsigned short srcMsgLen) {
 	int ret = 0;
 	FdNoSet fns;
-	unsigned char *bitmap = srcMsg + bitmapSize;
-	unsigned char *backupMsg = srcMsg;
+	unsigned char *bitmap = srcMsg + FS.fdSet[0].attr.maxLen/2;
+	unsigned char *backupMsg = srcMsg +FS.fdSet[0].attr.maxLen/2 +  bitmapSize;
 	int i = 0;
 	int j = 0;
 
@@ -795,8 +814,7 @@ int unpackISO8583Msg(unsigned char *srcMsg, unsigned short srcMsgLen) {
 	}
 
 	memset(&fns, 0x00, sizeof(fns));
-	fns.fnSet = (int *) malloc(sizeof(int) * (bitmapSize*8));
-
+	fns.fnSet = (int *) malloc(sizeof(int) * (bitmapSize * 8));
 
 	if (CHECK_M(fns.fnSet)) {
 //		printf("faild this[%s]\n", strerror(errno));
@@ -811,28 +829,36 @@ int unpackISO8583Msg(unsigned char *srcMsg, unsigned short srcMsgLen) {
 		}
 	}
 
+	
 	for (i = 0; i < fns.size; i++) {
 		printf("field->%d\n", fns.fnSet[i]);
 		switch (FS.fdSet[fns.fnSet[i] - 1].attr.contentAtr) {
 		case N:
+			printf("N\n");
 			ret = unpakNumericField(&backupMsg, &srcMsgLen, fns.fnSet[i]);
 			break;
 		case A:
+			printf("A\n");
 			ret = unpakAField(&backupMsg, &srcMsgLen, fns.fnSet[i]);
 			break;
 		case AN:
+			printf("AN\n");
 			ret = unpakANField(&backupMsg, &srcMsgLen, fns.fnSet[i]);
 			break;
 		case ANS:
+			printf("ANS\n");
 			ret = unpakANSField(&backupMsg, &srcMsgLen, fns.fnSet[i]);
 			break;
 		case S:
+			printf("S\n");
 			ret = unpakSField(&backupMsg, &srcMsgLen, fns.fnSet[i]);
 			break;
 		case Z:
+			printf("Z\n");
 			ret = unpakTrackZField(&backupMsg, &srcMsgLen, fns.fnSet[i]);
 			break;
 		case B:
+			printf("B\n");
 			ret = unpakBField(&backupMsg, &srcMsgLen, fns.fnSet[i]);
 			break;
 		default:

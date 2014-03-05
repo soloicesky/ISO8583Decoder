@@ -19,7 +19,7 @@ FIELD fieldS[] = { { 1, { N, MAX_MSGCODE_LEN, FIX, L },  },  //message code
 		{ 10, { N, MAX_CROCB_LEN, FIX, LL },  }, //Conversion rate, cardholder billing
 
 		{ 11, { N, MAX_STAN_LEN, FIX, L },  },  //System trace audit number
-		{ 12, { N, MAX_TOLT_LEN, VAR, LL },  }, //Time, local transaction (hhmmss)
+		{ 12, { N, MAX_TOLT_LEN, FIX, LL },  }, //Time, local transaction (hhmmss)
 		{ 13, { N, MAX_DOLT_LEN, FIX, L },  }, //Date, local transaction (MMDD)
 		{ 14, { N, MAX_DOE_LEN, FIX, L },  }, //Date, expiration
 		{ 15, { N, MAX_DOS_LEN, FIX, L },  }, //Date, settlement
@@ -62,7 +62,7 @@ FIELD fieldS[] = { { 1, { N, MAX_MSGCODE_LEN, FIX, L },  },  //message code
 
 		{ 46, { N, MAX_ADISO_LEN, VAR, LLL },  },  //Additional data - ISO
 		{ 47, { N, MAX_ADN_LEN, VAR, LLL },  }, //Additional data - national
-		{ 48, { N, MAX_AIR_LEN, VAR, LLL },  },  //Additional data - private
+		{ 48, { ANS, MAX_AIR_LEN, VAR, LLL },  },  //Additional data - private
 		{ 49, { N, MAX_CCOT_LEN, FIX, L },  }, //Currency code, transaction
 		{ 50, { N, MAX_CCOS_LEN, FIX, L },  }, //Currency code, settlement
 
