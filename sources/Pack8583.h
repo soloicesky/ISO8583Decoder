@@ -30,8 +30,24 @@ extern "C" {
 
 typedef int (*saveData)(unsigned char fieldNo, void *content, unsigned short len);
 
+/**
+ * @description: unpack the iso8583 message
+ * @param: srcMsg -  the iso8583 message that you wan to decode
+ * @param: srcMsgLen - des message length in
+ * @param: PsaveData - save the field's callback
+ * @retval: 0 - success
+ * @retval: none zero - fail
+ */
 int unpackISO8583Msg(unsigned char *srcMsg, unsigned short srcMsgLen, saveData PsaveData);
 
+/**
+ * @description: pack ISO8583 message
+ * @param: des8583Msg - buffer for the iso8583 message
+ * @param: desMsgLen - des message length out
+ * @param: fns - the field set that you want to use for build the iso8583 message
+ * @retval: 0 - success
+ * @retval: none zero - fail
+ */
 int packISO8583Msg(unsigned char *des8583Msg, unsigned short *desMsgLen,
 		FdNoSet *fns);
 

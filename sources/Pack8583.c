@@ -18,8 +18,8 @@ BITMAPBIT4, BITMAPBIT5, BITMAPBIT6, BITMAPBIT7, BITMAPBIT8 };
 int set_bitmapSize(unsigned char size) {
 	if ((size != STANDARD_BITMAP_SIZE) || (size != EXTEND_BITMAP_SIZE)) {
 		return ERR_INVALID_BITMAPSIZE;
-	}
-
+	
+}
 	bitmapSize = size;
 	return 0;
 }
@@ -33,6 +33,12 @@ int get_bitmapSize(void) {
 	return bitmapSize;
 }
 
+/**
+ * @description: check if the length is valid
+ * @param: FIELD - *fd the field that you want to check
+ * @retval: (ERR_BASELEN_WRONG - fd->filedNo) - err of field no
+ * @retval: 0 - success
+ */
 static int invalidateLength(FIELD *fd) {
 	assert(fd);
 
@@ -53,6 +59,14 @@ static int invalidateLength(FIELD *fd) {
 	return 0;
 }
 
+
+/**
+ * @description: pack the length of a var field
+ * @param: desMsg - buffer for the iso8583 message
+ * @param: desMsgLen - des message length out
+ * @retval: 0 - success
+ * @retval: none zero - fail
+ */
 static int packLength(unsigned char *desMsg, unsigned short *desMsgLen,
 		FIELD *fd) {
 	int ret = 0;
@@ -89,6 +103,14 @@ static int packLength(unsigned char *desMsg, unsigned short *desMsgLen,
 	return 0;
 }
 
+/**
+ * @description: pack numeric field
+ * @param: desMsg - buffer for the iso8583 message
+ * @param: desMsgLen - des message length out
+ * @param: fd - the field that you want to pack
+ * @retval: 0 - success
+ * @retval: none zero - fail
+ */
 static int packNumericField(unsigned char *desMsg, unsigned short *desMsgLen,
 		FIELD *fd) {
 	//add your to do here
@@ -128,6 +150,14 @@ static int packNumericField(unsigned char *desMsg, unsigned short *desMsgLen,
 	return ret;
 }
 
+/**
+ * @description: pack alpha field
+ * @param: desMsg - buffer for the iso8583 message
+ * @param: desMsgLen - des message length out
+ * @param: fd - the field that you want to pack
+ * @retval: 0 - success
+ * @retval: none zero - fail
+ */
 static int packAField(unsigned char *desMsg, unsigned short *desMsgLen,
 		FIELD *fd) {
 	//add your to do here
@@ -150,6 +180,14 @@ static int packAField(unsigned char *desMsg, unsigned short *desMsgLen,
 	return 0;
 }
 
+/**
+ * @description: pack special characer field
+ * @param: desMsg - buffer for the iso8583 message
+ * @param: desMsgLen - des message length out
+ * @param: fd - the field that you want to pack
+ * @retval: 0 - success
+ * @retval: none zero - fail
+ */
 static int packSField(unsigned char *desMsg, unsigned short *desMsgLen,
 		FIELD *fd) {
 	//add your to do here
@@ -172,6 +210,14 @@ static int packSField(unsigned char *desMsg, unsigned short *desMsgLen,
 	return 0;
 }
 
+/**
+ * @description: pack alpha numeric field
+ * @param: desMsg - buffer for the iso8583 message
+ * @param: desMsgLen - des message length out
+ * @param: fd - the field that you want to pack
+ * @retval: 0 - success
+ * @retval: none zero - fail
+ */
 static int packANField(unsigned char *desMsg, unsigned short *desMsgLen,
 		FIELD *fd) {
 	//add your to do here
@@ -194,6 +240,14 @@ static int packANField(unsigned char *desMsg, unsigned short *desMsgLen,
 	return 0;
 }
 
+/**
+ * @description: pack alpha numeric special character field
+ * @param: desMsg - buffer for the iso8583 message
+ * @param: desMsgLen - des message length out
+ * @param: fd - the field that you want to pack
+ * @retval: 0 - success
+ * @retval: none zero - fail
+ */
 static int packANSField(unsigned char *desMsg, unsigned short *desMsgLen,
 		FIELD *fd) {
 	//add your to do here
@@ -216,6 +270,14 @@ static int packANSField(unsigned char *desMsg, unsigned short *desMsgLen,
 	return 0;
 }
 
+/**
+ * @description: pack bit field
+ * @param: desMsg - buffer for the iso8583 message
+ * @param: desMsgLen - des message length out
+ * @param: fd - the field that you want to pack
+ * @retval: 0 - success
+ * @retval: none zero - fail
+ */
 static int packBField(unsigned char *desMsg, unsigned short *desMsgLen,
 		FIELD *fd) {
 	//add your to do here
@@ -244,6 +306,14 @@ static int packBField(unsigned char *desMsg, unsigned short *desMsgLen,
 	return 0;
 }
 
+/**
+ * @description: pack track field
+ * @param: desMsg - buffer for the iso8583 message
+ * @param: desMsgLen - des message length out
+ * @param: fd - the field that you want to pack
+ * @retval: 0 - success
+ * @retval: none zero - fail
+ */
 static int packZField(unsigned char *desMsg, unsigned short *desMsgLen,
 		FIELD *fd) {
 	//add your to do here
@@ -273,6 +343,14 @@ static int packZField(unsigned char *desMsg, unsigned short *desMsgLen,
 	return 0;
 }
 
+/**
+ * @description: pack ISO8583 message
+ * @param: des8583Msg - buffer for the iso8583 message
+ * @param: desMsgLen - des message length out
+ * @param: fns - the field set that you want to use for build the iso8583 message
+ * @retval: 0 - success
+ * @retval: none zero - fail
+ */
 int packISO8583Msg(unsigned char *des8583Msg, unsigned short *desMsgLen,
 		FdNoSet *fns) {
 	//add your to do here
@@ -338,6 +416,15 @@ int packISO8583Msg(unsigned char *des8583Msg, unsigned short *desMsgLen,
 	return ret;
 }
 
+/**
+ * @description: unpack the length of a var field
+ * @param: srcMsg -  the iso8583 message that you wan to decode
+ * @param: srcMsgLen - des message length in and out
+ * @param: contentLen - the field's content's length
+ * @param: fieldNo - the field you want to unpack
+ * @retval: 0 - success
+ * @retval: none zero - fail
+ */
 static int unpackLength(unsigned char **srcMsg, unsigned short *srcMsgLen,
 		unsigned short *contentLen, unsigned char fieldNo) {
 //	int ret = 0;
@@ -392,6 +479,15 @@ static int unpackLength(unsigned char **srcMsg, unsigned short *srcMsgLen,
 	return 0;
 }
 
+/**
+ * @description: unpack the a numeric field
+ * @param: srcMsg -  the iso8583 message that you wan to decode
+ * @param: srcMsgLen - des message length in and out
+ * @param: PsaveData - save the field's callback
+ * @param: fieldNo - the field you want to unpack
+ * @retval: 0 - success
+ * @retval: none zero - fail
+ */
 static int unpakNumericField(unsigned char **srcMsg, unsigned short *srcMsgLen,
 		unsigned char fieldNo, saveData PsaveData) {
 	int ret = 0;
@@ -443,6 +539,15 @@ static int unpakNumericField(unsigned char **srcMsg, unsigned short *srcMsgLen,
 	return ret;
 }
 
+/**
+ * @description: unpack the a alpha field
+ * @param: srcMsg -  the iso8583 message that you wan to decode
+ * @param: srcMsgLen - des message length in and out
+ * @param: PsaveData - save the field's callback
+ * @param: fieldNo - the field you want to unpack
+ * @retval: 0 - success
+ * @retval: none zero - fail
+ */
 static int unpakAField(unsigned char **srcMsg, unsigned short *srcMsgLen,
 		unsigned char fieldNo, saveData PsaveData) {
 	int ret = 0;
@@ -494,6 +599,16 @@ static int unpakAField(unsigned char **srcMsg, unsigned short *srcMsgLen,
 	return ret;
 }
 
+
+/**
+ * @description: unpack the a alpha numeric field
+ * @param: srcMsg -  the iso8583 message that you wan to decode
+ * @param: srcMsgLen - des message length in and out
+ * @param: PsaveData - save the field's callback
+ * @param: fieldNo - the field you want to unpack
+ * @retval: 0 - success
+ * @retval: none zero - fail
+ */
 static int unpakANField(unsigned char **srcMsg, unsigned short *srcMsgLen,
 		unsigned char fieldNo, saveData PsaveData) {
 	int ret = 0;
@@ -545,6 +660,16 @@ static int unpakANField(unsigned char **srcMsg, unsigned short *srcMsgLen,
 	return ret;
 }
 
+
+/**
+ * @description: unpack the a alpha numeric special character field
+ * @param: srcMsg -  the iso8583 message that you wan to decode
+ * @param: srcMsgLen - des message length in and out
+ * @param: PsaveData - save the field's callback
+ * @param: fieldNo - the field you want to unpack
+ * @retval: 0 - success
+ * @retval: none zero - fail
+ */
 static int unpakANSField(unsigned char **srcMsg, unsigned short *srcMsgLen,
 		unsigned char fieldNo, saveData PsaveData) {
 	int ret = 0;
@@ -597,6 +722,15 @@ static int unpakANSField(unsigned char **srcMsg, unsigned short *srcMsgLen,
 	return ret;
 }
 
+/**
+ * @description: unpack the a special character field
+ * @param: srcMsg -  the iso8583 message that you wan to decode
+ * @param: srcMsgLen - des message length in and out
+ * @param: PsaveData - save the field's callback
+ * @param: fieldNo - the field you want to unpack
+ * @retval: 0 - success
+ * @retval: none zero - fail
+ */
 static int unpakSField(unsigned char **srcMsg, unsigned short *srcMsgLen,
 		unsigned char fieldNo, saveData PsaveData) {
 	int ret = 0;
@@ -649,6 +783,16 @@ static int unpakSField(unsigned char **srcMsg, unsigned short *srcMsgLen,
 	return ret;
 }
 
+
+/**
+ * @description: unpack the a bit field
+ * @param: srcMsg -  the iso8583 message that you wan to decode
+ * @param: srcMsgLen - des message length in and out
+ * @param: PsaveData - save the field's callback
+ * @param: fieldNo - the field you want to unpack
+ * @retval: 0 - success
+ * @retval: none zero - fail
+ */
 static int unpakBField(unsigned char **srcMsg, unsigned short *srcMsgLen,
 		unsigned char fieldNo, saveData PsaveData) {
 	int ret = 0;
@@ -697,6 +841,15 @@ static int unpakBField(unsigned char **srcMsg, unsigned short *srcMsgLen,
 	return ret;
 }
 
+/**
+ * @description: unpack the a track field
+ * @param: srcMsg -  the iso8583 message that you wan to decode
+ * @param: srcMsgLen - des message length in and out
+ * @param: PsaveData - save the field's callback
+ * @param: fieldNo - the field you want to unpack
+ * @retval: 0 - success
+ * @retval: none zero - fail
+ */
 static int unpakTrackZField(unsigned char **srcMsg, unsigned short *srcMsgLen,
 		unsigned char fieldNo, saveData PsaveData) {
 	int ret = 0;
@@ -747,6 +900,15 @@ static int unpakTrackZField(unsigned char **srcMsg, unsigned short *srcMsgLen,
 	return ret;
 }
 
+
+/**
+ * @description: unpack the iso8583 message
+ * @param: srcMsg -  the iso8583 message that you wan to decode
+ * @param: srcMsgLen - des message length in
+ * @param: PsaveData - save the field's callback
+ * @retval: 0 - success
+ * @retval: none zero - fail
+ */
 int unpackISO8583Msg(unsigned char *srcMsg, unsigned short srcMsgLen,
 		saveData PsaveData) {
 	int ret = 0;
