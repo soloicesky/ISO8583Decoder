@@ -18,8 +18,8 @@ BITMAPBIT4, BITMAPBIT5, BITMAPBIT6, BITMAPBIT7, BITMAPBIT8 };
 int set_bitmapSize(unsigned char size) {
 	if ((size != STANDARD_BITMAP_SIZE) || (size != EXTEND_BITMAP_SIZE)) {
 		return ERR_INVALID_BITMAPSIZE;
-	
-}
+
+	}
 	bitmapSize = size;
 	return 0;
 }
@@ -58,7 +58,6 @@ static int invalidateLength(FIELD *fd) {
 
 	return 0;
 }
-
 
 /**
  * @description: pack the length of a var field
@@ -368,7 +367,7 @@ int packISO8583Msg(unsigned char *des8583Msg, unsigned short *desMsgLen,
 
 	for (i = 0; i < fns->size; i++) {
 		swapLen = 0;
-	//	printf("field:%d\r\n", fns->fnSet[i]);
+		//	printf("field:%d\r\n", fns->fnSet[i]);
 		SETBITS(bitmap[fns->fnSet[i] / 8], bitmapBits[(fns->fnSet[i] % 8) - 1]); //setup bitmap
 
 		//use the packing methods according to the field's attribute
@@ -512,15 +511,22 @@ static int unpakNumericField(unsigned char **srcMsg, unsigned short *srcMsgLen,
 	}
 	// if it's not allocated mem then allocated the len + 2 space,additional two is for store the '\0' end of a string
 	// and RFU one for dealing overflow
-	if (CHECK_M(FS.fdSet[fieldNo - 1].content.value)
-			|| (FS.fdSet[fieldNo - 1].content.length < len)) {
+	if (CHECK_M(FS.fdSet[fieldNo - 1].content.value)) {//没有分配存储空间则分配相应大小的空间
+
+
 		FS.fdSet[fieldNo - 1].content.value = (char *) malloc(
 				sizeof(char) * (len + 2));
 
-		if (CHECK_M(FS.fdSet[fieldNo - 1].content.value))	//allocat fail
-				{
-			return ERR_ALOM_FAILED;
+	} else {
+		if (FS.fdSet[fieldNo - 1].content.length < len) { //空间不足则重新分配空间
+			FS.fdSet[fieldNo - 1].content.value = (char *) realloc(FS.fdSet[fieldNo - 1].content.value,
+					sizeof(char) * (len + 2));
 		}
+	}
+
+	if (CHECK_M(FS.fdSet[fieldNo - 1].content.value))	//空间分配失败
+	{
+		return ERR_ALOM_FAILED;
 	}
 
 	memset(FS.fdSet[fieldNo - 1].content.value, 0x00, (len + 2));
@@ -573,15 +579,21 @@ static int unpakAField(unsigned char **srcMsg, unsigned short *srcMsgLen,
 
 	// if it's not allocated mem then allocated the len + 2 space,additional two is for store the '\0' end of a string
 	// and RFU one for dealing overflow
-	if (CHECK_M(FS.fdSet[fieldNo - 1].content.value)
-			|| (FS.fdSet[fieldNo - 1].content.length < len)) {
+	if (CHECK_M(FS.fdSet[fieldNo - 1].content.value)) {//没有分配存储空间则分配相应大小的空间
+
 		FS.fdSet[fieldNo - 1].content.value = (char *) malloc(
 				sizeof(char) * (len + 2));
 
-		if (CHECK_M(FS.fdSet[fieldNo - 1].content.value))	//allocat fail
-				{
-			return ERR_ALOM_FAILED;
+	} else {
+		if (FS.fdSet[fieldNo - 1].content.length < len) { //空间不足则重新分配空间
+			FS.fdSet[fieldNo - 1].content.value = (char *) realloc(FS.fdSet[fieldNo - 1].content.value,
+					sizeof(char) * (len + 2));
 		}
+	}
+
+	if (CHECK_M(FS.fdSet[fieldNo - 1].content.value))	//空间分配失败
+	{
+		return ERR_ALOM_FAILED;
 	}
 
 	memset(FS.fdSet[fieldNo - 1].content.value, 0x00, (len + 2));
@@ -598,7 +610,6 @@ static int unpakAField(unsigned char **srcMsg, unsigned short *srcMsgLen,
 	}
 	return ret;
 }
-
 
 /**
  * @description: unpack the a alpha numeric field
@@ -634,15 +645,22 @@ static int unpakANField(unsigned char **srcMsg, unsigned short *srcMsgLen,
 
 	// if it's not allocated mem then allocated the len + 2 space,additional two is for store the '\0' end of a string
 	// and RFU one for dealing overflow
-	if (CHECK_M(FS.fdSet[fieldNo - 1].content.value)
-			|| (FS.fdSet[fieldNo - 1].content.length < len)) {
+	if (CHECK_M(FS.fdSet[fieldNo - 1].content.value)) {//没有分配存储空间则分配相应大小的空间
+
+
 		FS.fdSet[fieldNo - 1].content.value = (char *) malloc(
 				sizeof(char) * (len + 2));
 
-		if (CHECK_M(FS.fdSet[fieldNo - 1].content.value))	//allocat fail
-				{
-			return ERR_ALOM_FAILED;
+	} else {
+		if (FS.fdSet[fieldNo - 1].content.length < len) { //空间不足则重新分配空间
+			FS.fdSet[fieldNo - 1].content.value = (char *) realloc(FS.fdSet[fieldNo - 1].content.value,
+					sizeof(char) * (len + 2));
 		}
+	}
+
+	if (CHECK_M(FS.fdSet[fieldNo - 1].content.value))	//空间分配失败
+	{
+		return ERR_ALOM_FAILED;
 	}
 
 	memset(FS.fdSet[fieldNo - 1].content.value, 0x00, (len + 2));
@@ -659,7 +677,6 @@ static int unpakANField(unsigned char **srcMsg, unsigned short *srcMsgLen,
 	}
 	return ret;
 }
-
 
 /**
  * @description: unpack the a alpha numeric special character field
@@ -695,15 +712,21 @@ static int unpakANSField(unsigned char **srcMsg, unsigned short *srcMsgLen,
 
 	// if it's not allocated mem then allocated the len + 2 space,additional two is for store the '\0' end of a string
 	// and RFU one for dealing overflow
-	if (CHECK_M(FS.fdSet[fieldNo - 1].content.value)
-			|| (FS.fdSet[fieldNo - 1].content.length < len)) {
+	if (CHECK_M(FS.fdSet[fieldNo - 1].content.value)) {//没有分配存储空间则分配相应大小的空间
+
 		FS.fdSet[fieldNo - 1].content.value = (char *) malloc(
 				sizeof(char) * (len + 2));
 
-		if (CHECK_M(FS.fdSet[fieldNo - 1].content.value))	//allocat fail
-				{
-			return ERR_ALOM_FAILED;
+	} else {
+		if (FS.fdSet[fieldNo - 1].content.length < len) { //空间不足则重新分配空间
+			FS.fdSet[fieldNo - 1].content.value = (char *) realloc(FS.fdSet[fieldNo - 1].content.value,
+					sizeof(char) * (len + 2));
 		}
+	}
+
+	if (CHECK_M(FS.fdSet[fieldNo - 1].content.value))	//空间分配失败
+	{
+		return ERR_ALOM_FAILED;
 	}
 
 	memset(FS.fdSet[fieldNo - 1].content.value, 0x00, (len + 2));
@@ -755,16 +778,21 @@ static int unpakSField(unsigned char **srcMsg, unsigned short *srcMsgLen,
 
 	// if it's not allocated mem then allocated the len + 2 space,additional two is for store the '\0' end of a string
 	// and RFU one for dealing overflow
-	if (CHECK_M(FS.fdSet[fieldNo - 1].content.value)
-			|| (FS.fdSet[fieldNo - 1].content.length < len)) {
+	if (CHECK_M(FS.fdSet[fieldNo - 1].content.value)) {//没有分配存储空间则分配相应大小的空间
 
 		FS.fdSet[fieldNo - 1].content.value = (char *) malloc(
 				sizeof(char) * (len + 2));
 
-		if (CHECK_M(FS.fdSet[fieldNo - 1].content.value))	//allocat fail
-				{
-			return ERR_ALOM_FAILED;
+	} else {
+		if (FS.fdSet[fieldNo - 1].content.length < len) { //空间不足则重新分配空间
+			FS.fdSet[fieldNo - 1].content.value = (char *) realloc(FS.fdSet[fieldNo - 1].content.value,
+					sizeof(char) * (len + 2));
 		}
+	}
+
+	if (CHECK_M(FS.fdSet[fieldNo - 1].content.value))	//空间分配失败
+	{
+		return ERR_ALOM_FAILED;
 	}
 
 	memset(FS.fdSet[fieldNo - 1].content.value, 0x00, (len + 2));
@@ -782,7 +810,6 @@ static int unpakSField(unsigned char **srcMsg, unsigned short *srcMsgLen,
 
 	return ret;
 }
-
 
 /**
  * @description: unpack the a bit field
@@ -817,15 +844,22 @@ static int unpakBField(unsigned char **srcMsg, unsigned short *srcMsgLen,
 
 	// if it's not allocated mem then allocated the len + 2 space,additional two is for store the '\0' end of a string
 	// and RFU one for dealing overflow
-	if (CHECK_M(FS.fdSet[fieldNo - 1].content.value)
-			|| (FS.fdSet[fieldNo - 1].content.length < len)) {
-		FS.fdSet[fieldNo - 1].content.value = (unsigned char *) malloc(
-				sizeof(unsigned char) * len);
+	if (CHECK_M(FS.fdSet[fieldNo - 1].content.value)) {//没有分配存储空间则分配相应大小的空间
 
-		if (CHECK_M(FS.fdSet[fieldNo - 1].content.value))	//allocat fail
-				{
-			return ERR_ALOM_FAILED;
+
+		FS.fdSet[fieldNo - 1].content.value = (char *) malloc(
+				sizeof(char) * (len + 2));
+
+	} else {
+		if (FS.fdSet[fieldNo - 1].content.length < len) { //空间不足则重新分配空间
+			FS.fdSet[fieldNo - 1].content.value = (char *) realloc(FS.fdSet[fieldNo - 1].content.value,
+					sizeof(char) * (len + 2));
 		}
+	}
+
+	if (CHECK_M(FS.fdSet[fieldNo - 1].content.value))	//空间分配失败
+	{
+		return ERR_ALOM_FAILED;
 	}
 
 	memset(FS.fdSet[fieldNo - 1].content.value, 0x00, len);
@@ -874,15 +908,21 @@ static int unpakTrackZField(unsigned char **srcMsg, unsigned short *srcMsgLen,
 
 	// if it's not allocated mem then allocated the len + 2 space,additional two is for store the '\0' end of a string
 	// and RFU one for dealing overflow
-	if (CHECK_M(FS.fdSet[fieldNo - 1].content.value)
-			|| (FS.fdSet[fieldNo - 1].content.length < len)) {
+	if (CHECK_M(FS.fdSet[fieldNo - 1].content.value)) {//没有分配存储空间则分配相应大小的空间
+
 		FS.fdSet[fieldNo - 1].content.value = (char *) malloc(
 				sizeof(char) * (len + 2));
 
-		if (CHECK_M(FS.fdSet[fieldNo - 1].content.value))	//allocat fail
-				{
-			return ERR_ALOM_FAILED;
+	} else {
+		if (FS.fdSet[fieldNo - 1].content.length < len) { //空间不足则重新分配空间
+			FS.fdSet[fieldNo - 1].content.value = (char *) realloc(FS.fdSet[fieldNo - 1].content.value,
+					sizeof(char) * (len + 2));
 		}
+	}
+
+	if (CHECK_M(FS.fdSet[fieldNo - 1].content.value))	//空间分配失败
+	{
+		return ERR_ALOM_FAILED;
 	}
 
 	memset(FS.fdSet[fieldNo - 1].content.value, 0x00, (len + 2));
@@ -900,7 +940,6 @@ static int unpakTrackZField(unsigned char **srcMsg, unsigned short *srcMsgLen,
 	return ret;
 }
 
-
 /**
  * @description: unpack the iso8583 message
  * @param: srcMsg -  the iso8583 message that you wan to decode
@@ -914,7 +953,8 @@ int unpackISO8583Msg(unsigned char *srcMsg, unsigned short srcMsgLen,
 	int ret = 0;
 	FdNoSet fns;
 	unsigned char *bitmap = srcMsg + FS.fdSet[0].attr.maxLen / 2;
-	unsigned char *backupMsg = bitmap + bitmapSize;;
+	unsigned char *backupMsg = bitmap + bitmapSize;
+	;
 	int i = 0;
 	int j = 0;
 
@@ -939,38 +979,38 @@ int unpackISO8583Msg(unsigned char *srcMsg, unsigned short srcMsgLen,
 	}
 
 	for (i = 0; i < fns.size; i++) {
-	//	printf("field->%d\n", fns.fnSet[i]);
-	//	printf("fn=:%d, ctr:%d\n", FS.fdSet[fns.fnSet[i] - 1].filedNo,FS.fdSet[fns.fnSet[i] - 1].attr.contentAtr);
+		//	printf("field->%d\n", fns.fnSet[i]);
+		//	printf("fn=:%d, ctr:%d\n", FS.fdSet[fns.fnSet[i] - 1].filedNo,FS.fdSet[fns.fnSet[i] - 1].attr.contentAtr);
 		switch (FS.fdSet[fns.fnSet[i] - 1].attr.contentAtr) {
 		case N:
-		//	printf("N\n");
+			//	printf("N\n");
 			ret = unpakNumericField(&backupMsg, &srcMsgLen, fns.fnSet[i],
 					PsaveData);
 			break;
 		case A:
-		//	printf("A\n");
+			//	printf("A\n");
 			ret = unpakAField(&backupMsg, &srcMsgLen, fns.fnSet[i], PsaveData);
 			break;
 		case AN:
-		//	printf("AN\n");
+			//	printf("AN\n");
 			ret = unpakANField(&backupMsg, &srcMsgLen, fns.fnSet[i], PsaveData);
 			break;
 		case ANS:
-		//	printf("ANS\n");
+			//	printf("ANS\n");
 			ret = unpakANSField(&backupMsg, &srcMsgLen, fns.fnSet[i],
 					PsaveData);
 			break;
 		case S:
-		//	printf("S\n");
+			//	printf("S\n");
 			ret = unpakSField(&backupMsg, &srcMsgLen, fns.fnSet[i], PsaveData);
 			break;
 		case Z:
-		//	printf("Z\n");
+			//	printf("Z\n");
 			ret = unpakTrackZField(&backupMsg, &srcMsgLen, fns.fnSet[i],
 					PsaveData);
 			break;
 		case B:
-		//	printf("B\n");
+			//	printf("B\n");
 			ret = unpakBField(&backupMsg, &srcMsgLen, fns.fnSet[i], PsaveData);
 			break;
 		default:
